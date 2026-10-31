@@ -1,0 +1,41 @@
+            <!-- Sticky Navigation Bar -->
+            <div class="sticky-nav">
+                <div class="sticky-nav-icons">
+                    <button class="nav-circle-btn" id="navBackBtn" title="Go back" onclick="history.back()"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button class="nav-circle-btn" id="navForwardBtn" title="Go forward" onclick="history.forward()"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+                <!-- Search bar -->
+                <div class="search-bar" id="searchBar" style="<%= (typeof activePage !== 'undefined' && activePage === 'search') ? 'display:flex;' : 'display:none;' %>">
+                    <i class="fa-solid fa-magnifying-glass search-bar-icon"></i>
+                    <input type="text" id="searchInput" placeholder="What do you want to play?" autocomplete="off" spellcheck="false" value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>">
+                    <button class="clear-search" id="clearSearchBtn" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="sticky-nav-options">
+                    <a href="/premium" class="badge nav-item hide" id="navPremiumBtn" style="text-decoration:none;display:inline-block;line-height:2rem;text-align:center;">Explore Premium</a>
+                    <button class="badge nav-item dark-badge" id="navInstallBtn"><i class="fa-regular fa-circle-down" style="margin-right:5px"></i> Install App</button>
+                    <!-- Auth Buttons (Visible when Logged Out) -->
+                    <div class="nav-auth-buttons" id="navAuthButtons" style="<%= (typeof user !== 'undefined' && user) ? 'display:none;' : 'display:flex;' %>">
+                        <a href="/auth?tab=register" class="badge dark-badge" id="navSignUpBtn" style="text-decoration:none;">Sign up</a>
+                        <a href="/auth?tab=login" class="badge" id="navLoginBtn" style="text-decoration:none;">Log in</a>
+                    </div>
+                    <div class="profile-nav-wrapper" id="navProfileWrapper" style="<%= (typeof user !== 'undefined' && user) ? 'display:flex;' : 'display:none;' %>">
+                        <button class="nav-user-btn" id="navUserBtn" title="Profile menu">
+                            <i class="fa-regular fa-user nav-user-icon"></i>
+                        </button>
+                        <!-- Profile Dropdown Menu -->
+                        <div class="profile-dropdown" id="profileDropdown" style="display:none;">
+                            <div class="dropdown-header">
+                                <span class="dropdown-username" id="dropdownUsername"><%= (typeof user !== 'undefined' && user) ? user.name : 'Alex Morgan' %></span>
+                                <span class="dropdown-email" id="dropdownEmail"><%= (typeof user !== 'undefined' && user) ? user.email : 'alex@spotify.com' %></span>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <a href="/profile" class="dropdown-item" id="dropdownProfileBtn"><i class="fa-regular fa-user"></i> Profile</a>
+                            <a href="/premium" class="dropdown-item" id="dropdownUpgradeBtn"><i class="fa-solid fa-arrow-up-right-from-square"></i> Upgrade to Premium</a>
+                            <a href="/profile" class="dropdown-item" id="dropdownSettingsBtn"><i class="fa-solid fa-gear"></i> Settings</a>
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-item" id="dropdownLogoutBtn"><i class="fa-solid fa-arrow-right-from-bracket"></i> Log out</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+

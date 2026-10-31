@@ -2,6 +2,185 @@
 
 ;(function() {
 
+/**
+ * Spotify Clone - Backend API Client
+ * Provides seamless communication with Node.js/Express backend (/api/*)
+ * with automatic fallback to offline local storage when running standalone.
+ */
+
+const API_BASE = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http'))
+    ? window.location.origin
+    : 'http://localhost:5000';
+
+class SpotifyApiClient {
+    constructor() {
+        this.token = (typeof localStorage !== 'undefined') ? localStorage.getItem('spotify_token') || null : null;
+        this.isOnline = false;
+    }
+
+    setToken(token) {
+        this.token = token;
+        if (typeof localStorage !== 'undefined') {
+            if (token) localStorage.setItem('spotify_token', token);
+            else localStorage.removeItem('spotify_token');
+        }
+    }
+
+    getToken() {
+        if (!this.token && typeof localStorage !== 'undefined') {
+            this.token = localStorage.getItem('spotify_token');
+        }
+        return this.token;
+    }
+
+    async request(endpoint, options = {}) {
+        const url = `${API_BASE}${endpoint}`;
+        const headers = {
+            'Content-Type': 'application/json',
+            ...(options.headers || {})
+        };
+
+        const token = this.getToken();
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
+            const res = await fetch(url, {
+                ...options,
+                headers,
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                return { error: data.error || `HTTP error ${res.status}`, status: res.status };
+            }
+            this.isOnline = true;
+            return { data, status: res.status };
+        } catch (err) {
+            this.isOnline = false;
+            return { error: err.message || 'Network unreachable', isOffline: true };
+        }
+    }
+
+    // Health
+    async checkHealth() {
+        const res = await this.request('/api/health');
+        return !res.error && res.data && (res.data.status === 'ok' || res.data.status === 'online');
+    }
+
+    // Auth
+    async login(email, password) {
+        const res = await this.request('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password })
+        });
+        if (res.data && res.data.token) {
+            this.setToken(res.data.token);
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('spotify_user', JSON.stringify(res.data.user));
+            }
+        }
+        return res;
+    }
+
+    async register(name, email, password, birthYear) {
+        const res = await this.request('/api/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({ name, email, password, birthYear })
+        });
+        if (res.data && res.data.token) {
+            this.setToken(res.data.token);
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('spotify_user', JSON.stringify(res.data.user));
+            }
+        }
+        return res;
+    }
+
+    async getMe() {
+        return await this.request('/api/auth/me');
+    }
+
+    async updateProfile(updates) {
+        return await this.request('/api/auth/profile', {
+            method: 'PUT',
+            body: JSON.stringify(updates)
+        });
+    }
+
+    // Tracks
+    async getTracks(query = '', genre = '') {
+        const params = new URLSearchParams();
+        if (query) params.append('q', query);
+        if (genre && genre !== 'all') params.append('genre', genre);
+        const qs = params.toString() ? `?${params.toString()}` : '';
+        return await this.request(`/api/tracks${qs}`);
+    }
+
+    async getTrackById(id) {
+        return await this.request(`/api/tracks/${id}`);
+    }
+
+    // Playlists
+    async getPlaylists() {
+        return await this.request('/api/playlists');
+    }
+
+    async createPlaylist(name, description = '') {
+        return await this.request('/api/playlists', {
+            method: 'POST',
+            body: JSON.stringify({ name, description })
+        });
+    }
+
+    async addTrackToPlaylist(playlistId, trackId) {
+        return await this.request(`/api/playlists/${playlistId}/tracks`, {
+            method: 'POST',
+            body: JSON.stringify({ trackId })
+        });
+    }
+
+    async removeTrackFromPlaylist(playlistId, trackId) {
+        return await this.request(`/api/playlists/${playlistId}/tracks/${trackId}`, {
+            method: 'DELETE'
+        });
+    }
+
+    // Likes & User
+    async getLikes() {
+        return await this.request('/api/user/likes');
+    }
+
+    async toggleLike(trackId) {
+        return await this.request('/api/user/likes', {
+            method: 'POST',
+            body: JSON.stringify({ trackId })
+        });
+    }
+
+    async updateSubscription(tier) {
+        return await this.request('/api/user/subscription', {
+            method: 'PUT',
+            body: JSON.stringify({ tier })
+        });
+    }
+
+    logout() {
+        this.setToken(null);
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('spotify_user');
+        }
+    }
+}
+
+const spotifyApi = new SpotifyApiClient();
+
+
+
 const playlist = [
     {
         id: 1,
@@ -920,28 +1099,47 @@ function initAuthModule({ onLoginSuccess, onRegisterSuccess, onLogout, toast, na
             loginBtn.disabled = true;
             loginBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Logging in...`;
 
-            setTimeout(() => {
+            (async () => {
+                let userObj = null;
+                if (typeof spotifyApi !== "undefined") {
+                    try {
+                        const res = await spotifyApi.login(email, pass);
+                        if (res && res.data && res.data.user) {
+                            userObj = res.data.user;
+                        } else if (res && res.error && !res.isOffline) {
+                            loginBtn.disabled = false;
+                            loginBtn.innerHTML = "Log In";
+                            toast(res.error, "fa-circle-exclamation");
+                            return;
+                        }
+                    } catch (err) {
+                        console.warn("Backend auth failed, using local fallback", err);
+                    }
+                }
+
+                if (!userObj) {
+                    const displayName = email.includes("@") ? email.split("@")[0] : email;
+                    const formattedName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+                    userObj = {
+                        name: formattedName,
+                        email: email.includes("@") ? email : `${email}@spotify-user.com`,
+                        avatar: "./assesst/logo.png",
+                        tier: "Spotify Free",
+                        isPremium: false
+                    };
+                }
+
                 loginBtn.disabled = false;
                 loginBtn.innerHTML = "Log In";
 
-                // Extract display name from email or use existing
-                const displayName = email.includes("@") ? email.split("@")[0] : email;
-                const formattedName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-
                 authState.isLoggedIn = true;
-                authState.currentUser = {
-                    name: formattedName,
-                    email: email.includes("@") ? email : `${email}@spotify-user.com`,
-                    avatar: "./assesst/logo.png",
-                    tier: "Spotify Free",
-                    isPremium: false
-                };
+                authState.currentUser = userObj;
 
                 loginForm.reset();
                 if (onLoginSuccess) onLoginSuccess(authState.currentUser);
-                toast(`Welcome back, ${formattedName}!`, "fa-circle-check");
+                toast(`Welcome back, ${userObj.name}!`, "fa-circle-check");
                 navigate("home");
-            }, 750);
+            })();
         });
     }
 
@@ -973,29 +1171,53 @@ function initAuthModule({ onLoginSuccess, onRegisterSuccess, onLogout, toast, na
             regBtn.disabled = true;
             regBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...`;
 
-            setTimeout(() => {
+            (async () => {
+                let userObj = null;
+                if (typeof spotifyApi !== "undefined") {
+                    try {
+                        const res = await spotifyApi.register(name, email, pass, regYear ? regYear.value : null);
+                        if (res && res.data && res.data.user) {
+                            userObj = res.data.user;
+                        } else if (res && res.error && !res.isOffline) {
+                            regBtn.disabled = false;
+                            regBtn.innerHTML = "Sign Up";
+                            toast(res.error, "fa-circle-exclamation");
+                            return;
+                        }
+                    } catch (err) {
+                        console.warn("Backend register failed, using local fallback", err);
+                    }
+                }
+
+                if (!userObj) {
+                    userObj = {
+                        name: name,
+                        email: email,
+                        avatar: "./assesst/logo.png",
+                        tier: "Spotify Free",
+                        isPremium: false
+                    };
+                }
+
                 regBtn.disabled = false;
                 regBtn.innerHTML = "Sign Up";
 
                 authState.isLoggedIn = true;
-                authState.currentUser = {
-                    name: name,
-                    email: email,
-                    avatar: "./assesst/logo.png",
-                    tier: "Spotify Free",
-                    isPremium: false
-                };
+                authState.currentUser = userObj;
 
                 registerForm.reset();
                 if (onRegisterSuccess) onRegisterSuccess(authState.currentUser);
-                toast(`Welcome to Spotify, ${name}! Your account is ready.`, "fa-circle-check");
+                toast(`Welcome to Spotify, ${userObj.name}! Your account is ready.`, "fa-circle-check");
                 navigate("profile");
-            }, 850);
+            })();
         });
     }
 
     // Logout Action function
     function performLogout() {
+        if (typeof spotifyApi !== "undefined") {
+            spotifyApi.logout();
+        }
         authState.isLoggedIn = false;
         authState.currentUser = {
             name: "Guest Listener",
@@ -1638,6 +1860,794 @@ function initMusicModule(options = {}) {
 }
 
 
+const FOOTER_PAGES_DATA = [
+    // 1. Company
+    {
+        filename: 'about.html',
+        title: 'Spotify - About Us',
+        badge: 'COMPANY & CULTURE',
+        heroClass: 'hero-teal',
+        heroTitle: 'Band together for the future of audio.',
+        heroSub: 'Our mission is to unlock the potential of human creativity—by giving a million creative artists the opportunity to live off their art and billions of fans the opportunity to enjoy and be inspired by it.',
+        actions: '<button class="badge" onclick="window.location.href=\'jobs.html\'">View Open Roles</button><button class="badge dark-badge" onclick="window.location.href=\'for-the-record.html\'">Press Releases</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-users"></i></div>
+                    <h4>626 Million+ Listeners</h4>
+                    <p>Over 626 million monthly active listeners across 184 countries and territories enjoy music on Spotify daily.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-music"></i></div>
+                    <h4>100 Million+ Tracks</h4>
+                    <p>Access the world's most comprehensive catalog of songs, live performances, and exclusive audio experiences.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-podcast"></i></div>
+                    <h4>6 Million+ Podcasts</h4>
+                    <p>Empowering creators and storytellers globally to reach passionate listeners wherever they are.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-earth-americas"></i></div>
+                    <h4>Global Diversity</h4>
+                    <p>Offices across Stockholm, New York, London, Tokyo, Mumbai, and Sydney fostering inclusive audio innovation.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'jobs.html',
+        title: 'Spotify - Careers & Jobs',
+        badge: 'JOIN THE BAND',
+        heroClass: 'hero-purple',
+        heroTitle: 'Work that hits the right notes.',
+        heroSub: 'Join a world-class team of engineers, designers, researchers, and audio pioneers transforming how the world connects through music.',
+        actions: '<button class="badge" onclick="alert(\'Application portal: Submissions open for Q4 2026 roles.\')">Apply for Roles</button><button class="badge dark-badge" onclick="window.location.href=\'about.html\'">Life at Spotify</button>',
+        content: `
+            <h3 class="info-section-title">Featured Opportunities</h3>
+            <div class="info-list-group">
+                <div class="info-list-row">
+                    <div class="info-list-meta">
+                        <span class="info-list-title">Senior Frontend Engineer — Web Audio & Player Systems</span>
+                        <span class="info-list-desc">Stockholm, Sweden / Remote • Engineering • Full-time</span>
+                    </div>
+                    <button class="badge dark-badge" onclick="alert('Position details: Senior Frontend Engineer (Web Audio)')">View Role</button>
+                </div>
+                <div class="info-list-row">
+                    <div class="info-list-meta">
+                        <span class="info-list-title">Staff Product Designer — Design Systems & UI Core</span>
+                        <span class="info-list-desc">New York, NY / Remote • Design • Full-time</span>
+                    </div>
+                    <button class="badge dark-badge" onclick="alert('Position details: Staff Product Designer')">View Role</button>
+                </div>
+                <div class="info-list-row">
+                    <div class="info-list-meta">
+                        <span class="info-list-title">Machine Learning Scientist — Audio Recommendation Algorithms</span>
+                        <span class="info-list-desc">London, UK • Machine Learning • Full-time</span>
+                    </div>
+                    <button class="badge dark-badge" onclick="alert('Position details: Machine Learning Scientist')">View Role</button>
+                </div>
+                <div class="info-list-row">
+                    <div class="info-list-meta">
+                        <span class="info-list-title">Global Artist Partnerships Lead</span>
+                        <span class="info-list-desc">Mumbai, India • Music Editorial • Full-time</span>
+                    </div>
+                    <button class="badge dark-badge" onclick="alert('Position details: Artist Partnerships Lead')">View Role</button>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'for-the-record.html',
+        title: 'Spotify - For the Record (Newsroom)',
+        badge: 'OFFICIAL NEWSROOM',
+        heroClass: 'hero-blue',
+        heroTitle: 'Stories behind the sound.',
+        heroSub: 'Discover the latest company announcements, product launches, global streaming data, and behind-the-scenes interviews with creators.',
+        actions: '<button class="badge" onclick="alert(\'Subscribed to Spotify Press Releases!\')">Subscribe to Updates</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <span class="info-badge">PRODUCT NEWS</span>
+                    <h4>How Real-Time Audio Visualizers & Lossless HiFi Transform Listening</h4>
+                    <p>An inside look at our engineering team\'s implementation of hardware-accelerated spectrum visualizers and adaptive acoustics.</p>
+                </div>
+                <div class="info-card">
+                    <span class="info-badge">CULTURE & ARTISTS</span>
+                    <h4>Loud & Clear: Record Payouts to Independent Songwriters and Labels</h4>
+                    <p>In 2025, Spotify paid more than $9 billion to the music industry, setting a new historical milestone for digital streaming.</p>
+                </div>
+                <div class="info-card">
+                    <span class="info-badge">INNOVATION</span>
+                    <h4>AI DJ Expansion: Voice Intelligence Meets Sonic Curation</h4>
+                    <p>Rolling out localized AI voice DJ experiences across Europe, Latin America, and Asia in over 30 languages.</p>
+                </div>
+            </div>
+        `
+    },
+
+    // 2. Communities
+    {
+        filename: 'for-artists.html',
+        title: 'Spotify for Artists',
+        badge: 'CREATIVE COMMUNITY',
+        heroClass: 'hero-pink',
+        heroTitle: 'Claim your profile. Grow your audience.',
+        heroSub: 'Get the data, tools, and direct fan connections you need to build a lifelong career in music on the world\'s largest streaming stage.',
+        actions: '<button class="badge" onclick="alert(\'Redirecting to Spotify for Artists login...\')">Claim Artist Profile</button><button class="badge dark-badge" onclick="window.location.href=\'music.html\'">View Live Showcase</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-chart-line"></i></div>
+                    <h4>Real-Time Audience Data</h4>
+                    <p>Track live listener spikes when your track drops, discover which playlists feature you, and map your worldwide fans.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-bullhorn"></i></div>
+                    <h4>Pitch to Playlist Editors</h4>
+                    <p>Submit unreleased tracks directly to our global editorial teams for placement on New Music Friday and Discover Weekly.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-clapperboard"></i></div>
+                    <h4>Canvas Visuals & Merch</h4>
+                    <p>Add 8-second looping visual videos to every song and link your official merchandise directly on your artist page.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'for-creators.html',
+        title: 'Spotify for Creators',
+        badge: 'PODCASTS & SHOWS',
+        heroClass: 'hero-purple',
+        heroTitle: 'Where audio storytelling finds its home.',
+        heroSub: 'From recorded room talks to video podcasts, discover distribution, monetization, and interactive Q&A tools made for creators.',
+        actions: '<button class="badge" onclick="window.location.href=\'podcasts.html\'">Explore Podcasts</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-video"></i></div>
+                    <h4>Video Podcasting</h4>
+                    <p>Engage viewers with full-fidelity video streaming on desktop and mobile, with seamless audio background playback.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-comments"></i></div>
+                    <h4>Interactive Polls & Q&As</h4>
+                    <p>Chat directly with your community by embedding audience questions and real-time live episode polls.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+                    <h4>Spotify Open Access & Ads</h4>
+                    <p>Monetize your listenership through subscriber-only bonus episodes and automated dynamic ad insertion.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'for-authors.html',
+        title: 'Spotify for Authors',
+        badge: 'AUDIOBOOKS & LITERATURE',
+        heroClass: 'hero-orange',
+        heroTitle: 'Give voice to your stories.',
+        heroSub: 'Distribute your audiobooks to Spotify Premium subscribers and listeners worldwide with industry-leading narration tools and transparent royalty tracking.',
+        actions: '<button class="badge" onclick="alert(\'Spotify Audiobook publishing program details requested.\')">Publish with Spotify</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-book-open"></i></div>
+                    <h4>375,000+ Titles Available</h4>
+                    <p>Join world-renowned publishing houses and indie writers reaching avid audiobook listeners globally.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-clock"></i></div>
+                    <h4>15 Hours Monthly Included</h4>
+                    <p>Eligible Spotify Premium subscribers receive 15 hours of audiobook listening time every single month.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-microphone"></i></div>
+                    <h4>High-Fidelity Narration</h4>
+                    <p>Chapter bookmarking, variable playback speeds (0.5x to 3.5x), and sleep timers tailored for spoken word.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'developers.html',
+        title: 'Spotify for Developers',
+        badge: 'WEB API & SDKS',
+        heroClass: 'hero-blue',
+        heroTitle: 'Build music into your apps.',
+        heroSub: 'Explore our modern Web API, Web Playback SDK, and open endpoints to create next-generation music and audio experiences.',
+        actions: '<button class="badge" onclick="alert(\'API Documentation: docs.spotify.com/web-api\')">Read API Docs</button><button class="badge dark-badge" onclick="alert(\'Dashboard: Create your Client ID\')">Create an App</button>',
+        content: `
+            <div class="code-box">
+// Sample Web API Request: Get Currently Playing Track
+curl -X GET "https://api.spotify.com/v1/me/player/currently-playing" \\
+  -H "Authorization: Bearer BQD...YOUR_OAUTH_TOKEN"
+            </div>
+            <div class="info-grid" style="margin-top:2rem;">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-code"></i></div>
+                    <h4>Web API</h4>
+                    <p>Retrieve rich metadata for artists, albums, playlists, tracks, audio features, and personalized recommendations.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-laptop-code"></i></div>
+                    <h4>Web Playback SDK</h4>
+                    <p>Stream Spotify audio directly inside web browsers using HTML5 Web Audio and encrypted DRM media streams.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-puzzle-piece"></i></div>
+                    <h4>Embed Widgets</h4>
+                    <p>Easily embed responsive Spotify player widgets into blogs, portfolios, and websites with simple iframe tags.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'advertising.html',
+        title: 'Spotify Advertising',
+        badge: 'SPOTIFY AD STUDIO',
+        heroClass: 'hero-teal',
+        heroTitle: 'Connect with listeners at the speed of culture.',
+        heroSub: 'Reach people when screens can\'t: working out, cooking, commuting, or relaxing with sound that commands attention.',
+        actions: '<button class="badge" onclick="alert(\'Welcome to Spotify Ad Studio. Sign up to launch audio campaigns starting from $250.\')">Start an Ad Campaign</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-volume-high"></i></div>
+                    <h4>Audio Ads</h4>
+                    <p>Engage listeners with 30-second audio spots with a clickable companion display banner and direct call to action.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-display"></i></div>
+                    <h4>Video Takeover</h4>
+                    <p>Reach users when they actively browse Spotify on mobile or desktop with sound-on, high-impact video experiences.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-bullseye"></i></div>
+                    <h4>Contextual Streaming Intelligence</h4>
+                    <p>Target based on music moods, workout activities, study playlists, device types, and geographical zones.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'investors.html',
+        title: 'Spotify - Investor Relations',
+        badge: 'NYSE: SPOT',
+        heroClass: 'hero-purple',
+        heroTitle: 'Spotify Technology S.A.',
+        heroSub: 'Explore our latest quarterly earnings reports, shareholder letters, SEC filings, and governance materials.',
+        actions: '<button class="badge" onclick="alert(\'Downloading latest Q3/Q4 2026 Shareholder Deck...\')">Download Earnings Report (PDF)</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                    <h4>Quarterly Results</h4>
+                    <p>Access our webcasts, financial press releases, operating income metrics, and global subscriber trends.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                    <h4>SEC Filings</h4>
+                    <p>Complete regulatory disclosures, including Forms 20-F, 6-K, proxy statements, and annual reports.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+                    <h4>Corporate Governance</h4>
+                    <p>Information on our board of directors, management committee, audit practices, and sustainability policies.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'vendors.html',
+        title: 'Spotify - Vendors & Partners',
+        badge: 'SUPPLIER PORTAL',
+        heroClass: 'hero-blue',
+        heroTitle: 'Collaborate with Spotify.',
+        heroSub: 'Resources, compliance guidelines, and procurement tools for Spotify vendors, service partners, and suppliers worldwide.',
+        actions: '<button class="badge" onclick="alert(\'Opening Spotify Supplier Portal login...\')">Vendor Portal Login</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-handshake"></i></div>
+                    <h4>Supplier Code of Conduct</h4>
+                    <p>Our standards for human rights, labor welfare, anti-corruption, environmental stewardship, and safety.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-receipt"></i></div>
+                    <h4>Billing & Invoicing Rules</h4>
+                    <p>Electronic invoicing instructions, purchase order verification, and regional payment terms.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <h4>Data Security & Privacy</h4>
+                    <p>Information security requirements and privacy benchmarks expected of all third-party systems.</p>
+                </div>
+            </div>
+        `
+    },
+
+    // 3. Useful Links
+    {
+        filename: 'support.html',
+        title: 'Spotify - Support & Help Center',
+        badge: 'CUSTOMER HELP',
+        heroClass: 'hero-teal',
+        heroTitle: 'How can we help you today?',
+        heroSub: 'Find answers, manage your subscription, fix audio playback issues, and learn tips to get the most out of Spotify.',
+        actions: '<button class="badge" onclick="alert(\'Live Chat: Our support assistant is ready to help.\')">Start Live Chat</button><button class="badge dark-badge" onclick="window.location.href=\'premium.html\'">Manage Subscription</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-key"></i></div>
+                    <h4>Can\'t Log In?</h4>
+                    <p>Reset your password, recover linked email addresses, or troubleshoot social login connections.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-credit-card"></i></div>
+                    <h4>Payment & Billing</h4>
+                    <p>Update credit cards, view past invoices, check trial expiration dates, or switch billing frequency.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-headphones"></i></div>
+                    <h4>Audio Troubleshooting</h4>
+                    <p>Fix crackling or stuttering sound, enable high-fidelity 320 kbps streaming, and configure offline cache.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'free-mobile-app.html',
+        title: 'Spotify - Free Mobile App',
+        badge: 'DOWNLOAD APP',
+        heroClass: 'hero-pink',
+        heroTitle: 'Take the sound anywhere.',
+        heroSub: 'Download Spotify for your iPhone, iPad, Android phone, smart watch, and tablet. Millions of songs right in your pocket.',
+        actions: '<button class="badge" onclick="alert(\'Downloading Spotify for iOS (App Store)...\')"><i class=\"fa-brands fa-apple\"></i> Download on App Store</button><button class="badge dark-badge" onclick="alert(\'Downloading Spotify for Android (Google Play)...\')"><i class=\"fa-brands fa-google-play\"></i> Get it on Google Play</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-car"></i></div>
+                    <h4>CarPlay & Android Auto</h4>
+                    <p>Control playlists effortlessly with oversized buttons and voice commands while keeping eyes on the road.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-wifi"></i></div>
+                    <h4>Data Saver Mode</h4>
+                    <p>Stream longer while consuming less mobile bandwidth with smart audio compression and offline playlists.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-sliders"></i></div>
+                    <h4>Lock Screen Player</h4>
+                    <p>Seamlessly control tracks, seek through live lyrics, and view high-res album covers on your lock screen.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'popular-by-country.html',
+        title: 'Spotify - Popular by Country',
+        badge: 'WORLDWIDE CHARTS',
+        heroClass: 'hero-orange',
+        heroTitle: 'Listen to what the world is playing.',
+        heroSub: 'Explore daily and weekly streaming velocities across 70+ nations. From Bollywood blockbusters to Tokyo J-Pop and London indie.',
+        actions: '<button class="badge" onclick="window.location.href=\'index.html\'">Listen to Global Top 50</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>🇺🇸 United States — Top Hits</h4>
+                    <p>Hip-Hop, pop chartbusters, country crossovers, and trending viral billboard records.</p>
+                </div>
+                <div class="info-card">
+                    <h4>🇮🇳 India — Hot 50 Hits</h4>
+                    <p>Bollywood romantic soundtracks, Punjabi high-energy anthems, and viral indie tracks.</p>
+                </div>
+                <div class="info-card">
+                    <h4>🇬🇧 United Kingdom — Official Charts</h4>
+                    <p>Electronic dance music, UK drill, brit-pop, and breakthrough acoustic singer-songwriters.</p>
+                </div>
+                <div class="info-card">
+                    <h4>🇯🇵 Japan — Weekly Viral</h4>
+                    <p>City pop classics, anime soundtracks, modern J-Rock, and Shibuya lo-fi beats.</p>
+                </div>
+                <div class="info-card">
+                    <h4>🇧🇷 Brazil — Top Brasil</h4>
+                    <p>Sertanejo universitário, Rio funk rhythms, and melodic MPB favorites.</p>
+                </div>
+                <div class="info-card">
+                    <h4>🌍 Top 50 — Global</h4>
+                    <p>The daily definitive index of the most played music across every country on earth.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'top-song-lyrics.html',
+        title: 'Spotify - Top Song Lyrics',
+        badge: 'SING ALONG',
+        heroClass: 'hero-teal',
+        heroTitle: 'Live synchronized lyrics for the songs you love.',
+        heroSub: 'Sing along in real time, discover songwriting credits, and seek through audio by tapping any lyric line.',
+        actions: '<button class="badge" onclick="window.location.href=\'music.html\'">Open Live Lyrics Player</button>',
+        content: `
+            <div class="info-list-group">
+                <div class="info-list-row">
+                    <div class="info-list-meta">
+                        <span class="info-list-title">Blinding Lights — The Weeknd</span>
+                        <span class="info-list-desc">"I've been on my own for long enough, maybe you can show me how to love..."</span>
+                    </div>
+                    <button class="badge" onclick="window.location.href=\'music.html\'">Play & Sing</button>
+                </div>
+                <div class="info-list-row">
+                    <div class="info-list-meta">
+                        <span class="info-list-title">Mahiya Jinna Sohna — Darshan Raval</span>
+                        <span class="info-list-desc">"Tu hi meri zindagani, tu hi chain mera, mahiya jinna sohna koi hor na mileya..."</span>
+                    </div>
+                    <button class="badge" onclick="window.location.href=\'music.html\'">Play & Sing</button>
+                </div>
+                <div class="info-list-row">
+                    <div class="info-list-meta">
+                        <span class="info-list-title">Starboy — The Weeknd ft. Daft Punk</span>
+                        <span class="info-list-desc">"P1 cleaner than your church shoes, ah... Look what you've done, I'm a motherf***ing starboy!"</span>
+                    </div>
+                    <button class="badge" onclick="window.location.href=\'music.html\'">Play & Sing</button>
+                </div>
+                <div class="info-list-row">
+                    <div class="info-list-meta">
+                        <span class="info-list-title">Naa Ready — Leo (Anirudh Ravichander)</span>
+                        <span class="info-list-desc">"Aagasam idikithu, aalungallum aaduthu, Naa ready thaan varava..."</span>
+                    </div>
+                    <button class="badge" onclick="window.location.href=\'music.html\'">Play & Sing</button>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'import-your-music.html',
+        title: 'Spotify - Import Your Music',
+        badge: 'LOCAL AUDIO FILES',
+        heroClass: 'hero-purple',
+        heroTitle: 'Play your own audio files alongside Spotify.',
+        heroSub: 'Import local MP3, WAV, FLAC, and M4A audio files from your computer and listen with our Web Audio player and real-time spectrum visualizer.',
+        actions: '<button class="badge" onclick="document.getElementById(\'localAudioInput\').click()"><i class=\"fa-solid fa-folder-open\"></i> Select Local Files</button>',
+        content: `
+            <div class="dropzone-box" onclick="document.getElementById('localAudioInput').click()">
+                <i class="fa-solid fa-cloud-arrow-up" style="font-size:3rem;color:#1ed760;margin-bottom:1rem;display:block;"></i>
+                <h3 style="font-size:1.4rem;color:#fff;margin-bottom:0.5rem;">Drag & drop your audio tracks here</h3>
+                <p style="color:#888;font-size:0.9rem;">Supports MP3, WAV, FLAC, AAC, OGG. Plays right in your browser with zero upload wait.</p>
+                <input type="file" id="localAudioInput" accept="audio/*" multiple style="display:none;" onchange="alert('Selected ' + this.files.length + ' audio files! Ready for playback.')">
+            </div>
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>Private & Client-Side</h4>
+                    <p>Your local audio files stay completely private on your machine and are rendered locally using the Web Audio API.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Visualizer Compatible</h4>
+                    <p>All imported songs connect directly into our real-time frequency spectrum visualizer and oscilloscope.</p>
+                </div>
+            </div>
+        `
+    },
+
+    // 4. Spotify Plans
+    {
+        filename: 'premium-standard.html',
+        title: 'Spotify - Premium Standard Plan',
+        badge: 'PREMIUM INDIVIDUAL',
+        heroClass: 'hero-teal',
+        heroTitle: 'Ad-free listening. Unlimited downloads.',
+        heroSub: 'Enjoy $10.99 / month after 1 month free trial. Cancel anytime with a single click in your settings.',
+        actions: '<button class="badge" onclick="window.location.href=\'premium.html\'">Start 1 Month Free</button><button class="badge dark-badge" onclick="window.location.href=\'premium.html\'">Compare All Plans</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-ban"></i></div>
+                    <h4>Zero Interruptions</h4>
+                    <p>Never hear another commercial or sponsored interruption between your songs.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-arrow-down"></i></div>
+                    <h4>Download up to 10,000 Songs</h4>
+                    <p>Store your favorite albums on up to 5 devices for full offline plane rides and road trips.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-sliders"></i></div>
+                    <h4>Full On-Demand Control</h4>
+                    <p>Play any track, repeat, rewind, and skip as many times as you desire without restriction.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'premium-platinum.html',
+        title: 'Spotify - Premium Platinum Plan',
+        badge: 'LOSSLESS AUDIO',
+        heroClass: 'hero-purple',
+        heroTitle: 'Pure Lossless 24-bit HiFi Audio.',
+        heroSub: 'Experience music exactly as the artists and producers recorded it in studio master clarity with adaptive spatial acoustics.',
+        actions: '<button class="badge" onclick="window.location.href=\'premium.html\'">Upgrade to Platinum</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-wave-square"></i></div>
+                    <h4>24-bit / 192kHz Lossless FLAC</h4>
+                    <p>Bit-perfect sound transmission delivering dynamic range and nuanced analog depth.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                    <h4>AI Studio Remastering</h4>
+                    <p>Intelligent frequency separation that boosts vocals and tightens bass response in real time.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-headphones"></i></div>
+                    <h4>Headphone Tuning Profiles</h4>
+                    <p>Custom calibration curves for over 150 top audiophile headphones and studio monitors.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'premium-student.html',
+        title: 'Spotify - Premium Student Plan',
+        badge: 'SPECIAL 50% DISCOUNT',
+        heroClass: 'hero-orange',
+        heroTitle: 'Study hard. Stream harder. Just $5.99 / mo.',
+        heroSub: 'Verified college and university students get a huge 50% discount plus free access to Hulu (With Ads).',
+        actions: '<button class="badge" onclick="window.location.href=\'premium.html\'">Verify with SheerID</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+                    <h4>50% Student Discount</h4>
+                    <p>Save over $60 each year compared to standard individual pricing, valid for up to 4 study years.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-tv"></i></div>
+                    <h4>Hulu Included Free</h4>
+                    <p>Watch hit television shows, movies, and Hulu originals anytime on your laptop or phone.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-book"></i></div>
+                    <h4>Focus & Study Soundtracks</h4>
+                    <p>Unlimited access to curated deep-focus lo-fi, binaural beats, and ambient study acoustics.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'spotify-free.html',
+        title: 'Spotify - Free Plan',
+        badge: 'FREE FOREVER',
+        heroClass: 'hero-blue',
+        heroTitle: 'Music for everyone. Zero cost.',
+        heroSub: 'Access over 100 million songs, millions of podcasts, and create unlimited custom playlists completely free.',
+        actions: '<button class="badge" onclick="window.location.href=\'auth.html\'">Sign Up Free</button><button class="badge dark-badge" onclick="window.location.href=\'premium.html\'">Compare with Premium</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-music"></i></div>
+                    <h4>100M+ Songs on Shuffle</h4>
+                    <p>Enjoy our entire global music catalog across desktop, tablet, web, and smart speakers.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-list"></i></div>
+                    <h4>Create Unlimited Playlists</h4>
+                    <p>Curate custom playlists, share them with your friends, and collaborate on shared music collections.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-podcast"></i></div>
+                    <h4>Full Podcast Library</h4>
+                    <p>Stream every podcast, follow your favorite hosts, and get notified about brand-new episodes.</p>
+                </div>
+            </div>
+        `
+    },
+
+    // 5. Sidebar Bottom Legal & Privacy
+    {
+        filename: 'legal.html',
+        title: 'Spotify - Legal Information',
+        badge: 'LEGAL & COMPLIANCE',
+        heroClass: 'hero-teal',
+        heroTitle: 'Spotify Legal Terms and Notices.',
+        heroSub: 'Read our terms of use, intellectual property policies, copyright guidelines, and commercial licensing agreements.',
+        actions: '<button class="badge" onclick="alert(\'Downloading Spotify Terms of Service (PDF)...\')">Download Terms (PDF)</button><button class="badge dark-badge" onclick="openFooterPage(\'safety-privacy-center.html\')">Safety Center</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+                    <h4>Terms of Service</h4>
+                    <p>The definitive user agreement governing the use of Spotify applications, streaming services, and subscription features.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-copyright"></i></div>
+                    <h4>Copyright & Intellectual Property</h4>
+                    <p>Information on DMCA takedown procedures, reporting copyright infringement, and licensing partner guidelines.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-handshake"></i></div>
+                    <h4>Fair Play Guidelines</h4>
+                    <p>Rules regarding community behavior, preventing stream manipulation, and acceptable audio usage.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-file-contract"></i></div>
+                    <h4>Trademark & Brand Licensing</h4>
+                    <p>Guidelines for partners, developers, and media outlets referencing Spotify logos, wordmarks, and visual assets.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'safety-privacy-center.html',
+        title: 'Spotify - Safety & Privacy Center',
+        badge: 'SAFETY & TRUST',
+        heroClass: 'hero-purple',
+        heroTitle: 'Your safety, security, and privacy come first.',
+        heroSub: 'Learn how Spotify protects your account, safeguards your data, and provides parental controls for a safe listening environment.',
+        actions: '<button class="badge" onclick="openFooterPage(\'privacy-policy.html\')">Read Privacy Policy</button><button class="badge dark-badge" onclick="alert(\'Security Report: All systems nominal.\')">Security Status</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <h4>Account Protection & 2FA</h4>
+                    <p>Multi-factor authentication, suspicious login detection, and prompt security alerts keep your profile locked down.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-child-reaching"></i></div>
+                    <h4>Youth & Parental Controls</h4>
+                    <p>Toggle explicit content filters on and off with pin protection, ensuring age-appropriate listening for families.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-user-secret"></i></div>
+                    <h4>Private Listening Sessions</h4>
+                    <p>Turn on Private Session at any time to temporarily hide your real-time listening activity from your friend feed.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-bug"></i></div>
+                    <h4>Vulnerability Disclosure</h4>
+                    <p>Our global Bug Bounty Program partners with white-hat security researchers to proactively uncover and fix threats.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'privacy-policy.html',
+        title: 'Spotify - Privacy Policy',
+        badge: 'DATA & TRANSPARENCY',
+        heroClass: 'hero-blue',
+        heroTitle: 'Transparency in how your data is used.',
+        heroSub: 'We believe in total transparency. Explore what data we collect, why we collect it, and how you have full control over your personal information.',
+        actions: '<button class="badge" onclick="alert(\'Preparing your personal data archive for download...\')">Download Your Data</button><button class="badge dark-badge" onclick="openFooterPage(\'cookies.html\')">Manage Cookies</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-database"></i></div>
+                    <h4>What Data We Collect</h4>
+                    <p>Information you provide when signing up, songs you stream, playlists you curate, and technical device diagnostics.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                    <h4>How We Use Your Data</h4>
+                    <p>Powering personalized audio recommendations like Discover Weekly, Daily Mix, and connecting you with beloved artists.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-fingerprint"></i></div>
+                    <h4>Your Global Privacy Rights</h4>
+                    <p>Full compliance with GDPR, CCPA, and global data privacy standards, granting you the right to access, edit, or delete your data.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-lock"></i></div>
+                    <h4>Third-Party Sharing Controls</h4>
+                    <p>Strict boundaries preventing unauthorized sale of personal data, with optional toggles for ad personalization.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'cookies.html',
+        title: 'Spotify - Cookies & Local Storage',
+        badge: 'TRACKING & STORAGE',
+        heroClass: 'hero-orange',
+        heroTitle: 'Cookies and Local Storage on Spotify.',
+        heroSub: 'Understand how we use cookies, local caching, and tracking technologies to optimize performance, remember your preferences, and keep you logged in.',
+        actions: '<button class="badge" onclick="alert(\'All essential and performance cookies active.\')">Accept All Cookies</button><button class="badge dark-badge" onclick="alert(\'Cookie preferences saved.\')">Save Preferences</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-cookie-bite"></i></div>
+                    <h4>Strictly Necessary Cookies</h4>
+                    <p>Essential for basic platform functionality: maintaining active user sessions, secure authentication, and Web Audio streaming.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-chart-pie"></i></div>
+                    <h4>Performance & Analytics</h4>
+                    <p>Anonymous metrics on loading speeds, crash diagnostics, and audio buffer latency to ensure smooth uninterrupted playback.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-sliders"></i></div>
+                    <h4>Functional Storage</h4>
+                    <p>Locally caches your volume sliders, repeat/shuffle toggles, created playlists, and UI theme preferences.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-bullhorn"></i></div>
+                    <h4>Targeting & Advertising</h4>
+                    <p>Helps deliver relevant advertisements to Free tier listeners. Can be customized or disabled via Ad Settings.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'about-ads.html',
+        title: 'Spotify - About Our Ads',
+        badge: 'ADVERTISING CHOICES',
+        heroClass: 'hero-pink',
+        heroTitle: 'Your choices regarding Spotify ads.',
+        heroSub: 'Advertising keeps Spotify free for millions of listeners around the world. Discover how audio and display ads work, and how to manage your ad preferences.',
+        actions: '<button class="badge" onclick="openFooterPage(\'premium-standard.html\')">Go Ad-Free with Premium</button><button class="badge dark-badge" onclick="alert(\'Personalized ad preferences updated.\')">Opt Out of Tailored Ads</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-rectangle-ad"></i></div>
+                    <h4>Why Free Spotify Has Ads</h4>
+                    <p>Sponsored advertisements fund music royalties paid directly to songwriters, artists, and independent rights holders.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-user-gear"></i></div>
+                    <h4>Tailored Advertising Controls</h4>
+                    <p>Choose whether advertisements are personalized based on your general listening genres, interests, or location.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-volume-high"></i></div>
+                    <h4>Audio Ad Frequency Caps</h4>
+                    <p>Strict caps guarantee that commercial breaks never exceed standard duration limits between your favorite songs.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-gem"></i></div>
+                    <h4>100% Ad-Free with Premium</h4>
+                    <p>Upgrade to Spotify Premium to instantly eliminate all audio, banner, and sponsored interruptions permanently.</p>
+                </div>
+            </div>
+        `
+    },
+    {
+        filename: 'accessibility.html',
+        title: 'Spotify - Accessibility',
+        badge: 'INCLUSION & ACCESS',
+        heroClass: 'hero-teal',
+        heroTitle: 'Music and audio for every listener.',
+        heroSub: 'We are committed to making Spotify accessible for people with diverse auditory, visual, motor, and cognitive abilities.',
+        actions: '<button class="badge" onclick="alert(\'High Contrast mode toggled for current session!\')">Toggle High Contrast</button><button class="badge dark-badge" onclick="openFooterPage(\'support.html\')">Contact Accessibility Support</button>',
+        content: `
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-universal-access"></i></div>
+                    <h4>Screen Readers & ARIA</h4>
+                    <p>Full support for NVDA, JAWS, VoiceOver, and TalkBack with comprehensive ARIA labels and logical focus order.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-keyboard"></i></div>
+                    <h4>Keyboard Navigation</h4>
+                    <p>Navigate playlists, trigger playback, adjust volume, and search using standard keyboard shortcuts (Space, Tab, Arrows).</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-closed-captioning"></i></div>
+                    <h4>Synchronized Live Lyrics</h4>
+                    <p>Time-aligned scrolling lyrics and podcast transcription provide visual accessibility for deaf and hard-of-hearing fans.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-circle-half-stroke"></i></div>
+                    <h4>High Contrast & Reduced Motion</h4>
+                    <p>Complies with WCAG 2.1 AA contrast ratios, text resizing up to 200%, and respects prefers-reduced-motion settings.</p>
+                </div>
+            </div>
+        `
+    }
+];
+
+
 /**
  * Spotify Clone - Single Page Application Controller
  * Handles routing, search, library, playlists, podcasts, premium, profile, music screen, and audio player
@@ -1672,6 +2682,54 @@ function runApp() {
     let userPlaylists = []; // { id, name, desc, songs:[] }
     let playlistIdCounter = 1;
     let viewingPlaylistId = null;
+
+    // Load persisted state from localStorage for multi-page continuity
+    try {
+        const savedTrack = localStorage.getItem("spotify_currentTrack");
+        if (savedTrack !== null) currentTrackIndex = parseInt(savedTrack, 10) || 0;
+        const savedLikes = localStorage.getItem("spotify_likedSongs");
+        if (savedLikes) likedSongs = new Set(JSON.parse(savedLikes));
+        const savedPlaylists = localStorage.getItem("spotify_userPlaylists");
+        if (savedPlaylists) {
+            userPlaylists = JSON.parse(savedPlaylists);
+            if (userPlaylists.length > 0) {
+                playlistIdCounter = Math.max(...userPlaylists.map(p => p.id)) + 1;
+            }
+        }
+        const savedVol = localStorage.getItem("spotify_volume");
+        if (savedVol !== null) volume = parseFloat(savedVol) || 0.75;
+    } catch (e) {}
+
+    // Async sync with Node.js/Express Backend if online
+    if (typeof spotifyApi !== "undefined") {
+        spotifyApi.checkHealth().then(isOnline => {
+            if (isOnline) {
+                spotifyApi.getLikes().then(res => {
+                    if (res && res.data && Array.isArray(res.data.likes)) {
+                        res.data.likes.forEach(id => likedSongs.add(id));
+                        if (typeof updateLikeIcon === "function") updateLikeIcon();
+                    }
+                }).catch(() => {});
+                spotifyApi.getPlaylists().then(res => {
+                    if (res && res.data && Array.isArray(res.data.playlists) && res.data.playlists.length > 0) {
+                        const existingNames = new Set(userPlaylists.map(p => p.name));
+                        res.data.playlists.forEach(pl => {
+                            if (!existingNames.has(pl.name)) {
+                                userPlaylists.push({
+                                    id: pl.id,
+                                    name: pl.name,
+                                    desc: pl.description || "",
+                                    songs: pl.tracks || []
+                                });
+                            }
+                        });
+                        if (typeof renderSidebarPlaylists === "function") renderSidebarPlaylists();
+                        if (profileModule && typeof profileModule.updatePlaylists === "function") profileModule.updatePlaylists(userPlaylists);
+                    }
+                }).catch(() => {});
+            }
+        }).catch(() => {});
+    }
 
     // =========================================================================
     // AUDIO ENGINE (Web Audio API)
@@ -1807,33 +2865,90 @@ function runApp() {
     }
 
     // =========================================================================
-    // ROUTER - Show/hide pages
+    // ROUTER - Show/hide pages or navigate between separate files
     // =========================================================================
     function navigate(page, pushHistory = true) {
-        $$(".page").forEach(p => p.style.display = "none");
-        const el = $("page" + page.charAt(0).toUpperCase() + page.slice(1));
-        if (el) el.style.display = "block";
-
-        // Search bar visibility
-        searchBar.style.display = page === "search" ? "flex" : "none";
-
-        // Update sidebar active state
-        $$(".nav-option").forEach(n => n.classList.remove("active-nav"));
-        if (page === "home") $("navHome").classList.add("active-nav");
-        else if (page === "search") $("navSearch").classList.add("active-nav");
-        else if (page === "library") $("navLibrary").classList.add("active-nav");
-
-        currentPage = page;
-        if (pushHistory) {
-            pageHistory.splice(historyIndex + 1);
-            pageHistory.push(page);
-            historyIndex = pageHistory.length - 1;
+        if (page && page.startsWith("info:")) {
+            const cleanName = page.split(":")[1];
+            openFooterPage(cleanName, pushHistory);
+            return;
         }
-        updateNavButtons();
-        mainContent.scrollTop = 0;
 
-        if (page === "music" && musicModule && musicModule.resizeVisualizer) {
-            setTimeout(() => musicModule.resizeVisualizer(), 40);
+        const targetId = "page" + page.charAt(0).toUpperCase() + page.slice(1);
+        const el = $(targetId);
+
+        if (el) {
+            $$(".page").forEach(p => p.style.display = "none");
+            el.style.display = "block";
+
+            // Clear any active footer links when navigating to core pages
+            $$(".footer-link").forEach(l => l.classList.remove("active-footer-link"));
+
+            // Search bar visibility
+            if (searchBar) searchBar.style.display = page === "search" ? "flex" : "none";
+
+            // Update sidebar active state
+            $$(".nav-option").forEach(n => n.classList.remove("active-nav"));
+            if (page === "home" && $("navHome")) $("navHome").classList.add("active-nav");
+            else if (page === "search" && $("navSearch")) $("navSearch").classList.add("active-nav");
+            else if (page === "library" && $("navLibrary")) $("navLibrary").classList.add("active-nav");
+
+            currentPage = page;
+            if (pushHistory) {
+                pageHistory.splice(historyIndex + 1);
+                pageHistory.push(page);
+                historyIndex = pageHistory.length - 1;
+            }
+            updateNavButtons();
+            mainContent.scrollTop = 0;
+
+            if (page === "music" && musicModule && musicModule.resizeVisualizer) {
+                setTimeout(() => musicModule.resizeVisualizer(), 40);
+            }
+        } else {
+            // Multi-page navigation fallback to separated screen HTML files
+            const pageFileMap = {
+                home: "index.html",
+                search: "search.html",
+                library: "library.html",
+                createPlaylist: "create-playlist.html",
+                podcasts: "podcasts.html",
+                premium: "premium.html",
+                profile: "profile.html",
+                music: "music.html",
+                auth: "auth.html",
+                about: "about.html",
+                jobs: "jobs.html",
+                forTheRecord: "for-the-record.html",
+                forArtists: "for-artists.html",
+                forCreators: "for-creators.html",
+                forAuthors: "for-authors.html",
+                developers: "developers.html",
+                advertising: "advertising.html",
+                investors: "investors.html",
+                vendors: "vendors.html",
+                support: "support.html",
+                freeMobileApp: "free-mobile-app.html",
+                popularByCountry: "popular-by-country.html",
+                topSongLyrics: "top-song-lyrics.html",
+                importYourMusic: "import-your-music.html",
+                premiumStandard: "premium-standard.html",
+                premiumPlatinum: "premium-platinum.html",
+                premiumStudent: "premium-student.html",
+                spotifyFree: "spotify-free.html",
+                legal: "legal.html",
+                "safety-privacy-center": "safety-privacy-center.html",
+                safetyPrivacyCenter: "safety-privacy-center.html",
+                "privacy-policy": "privacy-policy.html",
+                privacyPolicy: "privacy-policy.html",
+                cookies: "cookies.html",
+                "about-ads": "about-ads.html",
+                aboutAds: "about-ads.html",
+                accessibility: "accessibility.html"
+            };
+            if (pageFileMap[page]) {
+                window.location.href = pageFileMap[page];
+            }
         }
     }
 
@@ -1875,6 +2990,323 @@ function runApp() {
             toast("Downloading Spotify for Desktop...", "fa-circle-down");
         });
     }
+
+    // =========================================================================
+    // FOOTER PAGES NAVIGATION (JS & CSS DYNAMIC LOADER + STANDALONE COMPATIBILITY)
+    // =========================================================================
+    function openFooterPage(filename, pushHistory = true) {
+        if (!filename) return;
+        const cleanName = filename.split("/").pop().toLowerCase();
+
+        // Persist audio state before page navigation
+        try {
+            localStorage.setItem("spotify_currentTrack", currentTrackIndex);
+            localStorage.setItem("spotify_currentTime", currentTime);
+            localStorage.setItem("spotify_volume", volume);
+            localStorage.setItem("spotify_isPlaying", isPlaying ? "true" : "false");
+        } catch (e) {}
+
+        const pageInfoContainer = $("pageInfo");
+        // If in-page container exists (e.g. index.html) and data is loaded, render dynamically without audio interruption
+        if (pageInfoContainer && typeof FOOTER_PAGES_DATA !== "undefined") {
+            const pageData = FOOTER_PAGES_DATA.find(p => p.filename.toLowerCase() === cleanName);
+            if (pageData) {
+                pageInfoContainer.innerHTML = `
+                    <div class="info-page-container">
+                        <div class="info-hero ${pageData.heroClass}">
+                            <button class="info-back-link" id="inPageBackBtn" type="button"><i class="fa-solid fa-arrow-left"></i> Back to Home</button>
+                            <span class="info-badge">${pageData.badge}</span>
+                            <h1 class="info-title">${pageData.heroTitle}</h1>
+                            <p class="info-sub">${pageData.heroSub}</p>
+                            <div class="info-actions">
+                                ${pageData.actions}
+                            </div>
+                        </div>
+                        ${pageData.content}
+                    </div>
+                `;
+
+                // Wire up back button to return to home
+                const inPageBackBtn = $("inPageBackBtn");
+                if (inPageBackBtn) {
+                    inPageBackBtn.addEventListener("click", () => navigate("home"));
+                }
+
+                // Show pageInfo, hide other pages
+                $$(".page").forEach(p => p.style.display = "none");
+                pageInfoContainer.style.display = "block";
+                if (searchBar) searchBar.style.display = "none";
+                $$(".nav-option").forEach(n => n.classList.remove("active-nav"));
+
+                // Highlight active link in the footer and sidebar
+                $$(".footer-link, .sidebar-legal-link").forEach(l => {
+                    const lHref = (l.getAttribute("href") || "").split("/").pop().toLowerCase();
+                    l.classList.toggle("active-footer-link", lHref === cleanName);
+                });
+
+                currentPage = "info";
+                if (pushHistory) {
+                    pageHistory.splice(historyIndex + 1);
+                    pageHistory.push("info:" + cleanName);
+                    historyIndex = pageHistory.length - 1;
+                }
+                updateNavButtons();
+                mainContent.scrollTop = 0;
+                return;
+            }
+        }
+
+        // Standalone navigation fallback: open dedicated HTML file
+        window.location.href = cleanName;
+    }
+
+    // Expose globally for button clicks
+    window.openFooterPage = openFooterPage;
+
+    // Attach click listeners to all footer and sidebar legal links across the document
+    $$(".footer-link, .sidebar-legal-link").forEach(link => {
+        link.addEventListener("click", (e) => {
+            const href = link.getAttribute("href");
+            if (href && href !== "#" && !href.startsWith("javascript:")) {
+                e.preventDefault();
+                openFooterPage(href);
+            }
+        });
+    });
+
+    // =========================================================================
+    // SIDEBAR LANGUAGE SELECTOR MODAL
+    // =========================================================================
+    const sidebarLangBtn = $("sidebarLangBtn");
+    const langModalOverlay = $("langModalOverlay");
+    const closeLangModalBtn = $("closeLangModalBtn");
+    const sidebarLangLabel = $("sidebarLangLabel");
+
+    // Load saved language preference
+    try {
+        const savedLang = localStorage.getItem("spotify_language");
+        if (savedLang && sidebarLangLabel) {
+            sidebarLangLabel.textContent = savedLang;
+            $$(".lang-item").forEach(item => {
+                item.classList.toggle("active-lang", item.dataset.lang === savedLang);
+            });
+        }
+    } catch (e) {}
+
+    if (sidebarLangBtn && langModalOverlay) {
+        sidebarLangBtn.addEventListener("click", () => {
+            langModalOverlay.style.display = "flex";
+        });
+    }
+
+    if (closeLangModalBtn && langModalOverlay) {
+        closeLangModalBtn.addEventListener("click", () => {
+            langModalOverlay.style.display = "none";
+        });
+    }
+
+    if (langModalOverlay) {
+        langModalOverlay.addEventListener("click", (e) => {
+            if (e.target === langModalOverlay) {
+                langModalOverlay.style.display = "none";
+            }
+        });
+    }
+
+    $$(".lang-item").forEach(item => {
+        item.addEventListener("click", () => {
+            const selectedLang = item.dataset.lang;
+            if (selectedLang) {
+                if (sidebarLangLabel) sidebarLangLabel.textContent = selectedLang;
+                $$(".lang-item").forEach(btn => btn.classList.remove("active-lang"));
+                item.classList.add("active-lang");
+                try {
+                    localStorage.setItem("spotify_language", selectedLang);
+                } catch (e) {}
+                if (langModalOverlay) langModalOverlay.style.display = "none";
+                toast(`Language updated to ${selectedLang}`, "fa-globe");
+            }
+        });
+    });
+
+    // =========================================================================
+    // RIGHT SLIDING SIDEBAR (COLLAPSED RAIL & EXPANDED PANEL - MATCHING SCREENSHOTS)
+    // =========================================================================
+    const rightSidebar = $("rightSidebar");
+    const rightSidebarRail = $("rightSidebarRail");
+    const railExpandBtn = $("railExpandBtn");
+    const rightSidebarSlideSash = $("rightSidebarSlideSash");
+    const closeRightSidebarBtn = $("closeRightSidebarBtn");
+    const rightSidebarSearchBtn = $("rightSidebarSearchBtn");
+    const rightSidebarEmpty = $("rightSidebarEmpty");
+    const rightSidebarContent = $("rightSidebarContent");
+    const rightSidebarCover = $("rightSidebarCover");
+    const rightSidebarTrackTitle = $("rightSidebarTrackTitle");
+    const rightSidebarTrackArtist = $("rightSidebarTrackArtist");
+    const rightSidebarArtistImg = $("rightSidebarArtistImg");
+    const rightSidebarArtistName = $("rightSidebarArtistName");
+    const rightSidebarNextImg = $("rightSidebarNextImg");
+    const rightSidebarNextName = $("rightSidebarNextName");
+    const rightSidebarNextArtist = $("rightSidebarNextArtist");
+    const rightSidebarLikeBtn = $("rightSidebarLikeBtn");
+    const rightSidebarFollowBtn = $("rightSidebarFollowBtn");
+    const rightSidebarOpenQueueBtn = $("rightSidebarOpenQueueBtn");
+
+    let isRightSidebarOpen = false; // Default to sleek collapsed rail matching screenshot
+    try {
+        const savedSidebar = localStorage.getItem("spotify_rightSidebarOpen");
+        if (savedSidebar !== null) isRightSidebarOpen = savedSidebar === "true";
+    } catch (e) {}
+
+    function setRightSidebarState(open) {
+        isRightSidebarOpen = open;
+        if (rightSidebar) {
+            rightSidebar.classList.toggle("collapsed", !open);
+            rightSidebar.style.width = ""; // clear inline dragging width
+        }
+        try {
+            localStorage.setItem("spotify_rightSidebarOpen", open ? "true" : "false");
+        } catch (e) {}
+    }
+
+    // Expand when clicking the collapsed rail or chevron button (Screenshot 2 -> Screenshot 1)
+    if (railExpandBtn) {
+        railExpandBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setRightSidebarState(true);
+        });
+    }
+    if (rightSidebarRail) {
+        rightSidebarRail.addEventListener("click", () => setRightSidebarState(true));
+    }
+
+    // Collapse back to sleek rail (Screenshot 1 -> Screenshot 2)
+    if (closeRightSidebarBtn) {
+        closeRightSidebarBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setRightSidebarState(false);
+        });
+    }
+
+    // Drag-to-Slide interactive gesture mechanics
+    let isDraggingSlide = false;
+
+    function startSlideDrag(e) {
+        isDraggingSlide = true;
+        if (rightSidebar) {
+            rightSidebar.classList.remove("collapsed");
+            rightSidebar.classList.add("no-transition", "dragging");
+        }
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+
+        window.addEventListener("mousemove", onSlideDragMove);
+        window.addEventListener("mouseup", endSlideDrag);
+        window.addEventListener("touchmove", onSlideDragMove);
+        window.addEventListener("touchend", endSlideDrag);
+    }
+
+    function onSlideDragMove(e) {
+        if (!isDraggingSlide || !rightSidebar) return;
+        const currentX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+        const windowWidth = window.innerWidth;
+        const newWidth = Math.max(48, Math.min(520, windowWidth - currentX - 8));
+        rightSidebar.style.width = newWidth + "px";
+    }
+
+    function endSlideDrag(e) {
+        if (!isDraggingSlide) return;
+        isDraggingSlide = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+
+        window.removeEventListener("mousemove", onSlideDragMove);
+        window.removeEventListener("mouseup", endSlideDrag);
+        window.removeEventListener("touchmove", onSlideDragMove);
+        window.removeEventListener("touchend", endSlideDrag);
+
+        if (rightSidebar) {
+            rightSidebar.classList.remove("no-transition", "dragging");
+            const finalWidth = rightSidebar.offsetWidth;
+            if (finalWidth >= 140) {
+                setRightSidebarState(true);
+            } else {
+                setRightSidebarState(false);
+            }
+        }
+    }
+
+    // Drag from collapsed rail or from left sash
+    if (rightSidebarRail) {
+        rightSidebarRail.addEventListener("mousedown", startSlideDrag);
+        rightSidebarRail.addEventListener("touchstart", startSlideDrag, { passive: true });
+    }
+
+    if (rightSidebarSlideSash) {
+        rightSidebarSlideSash.addEventListener("mousedown", startSlideDrag);
+        rightSidebarSlideSash.addEventListener("touchstart", startSlideDrag, { passive: true });
+    }
+
+    if (rightSidebarSearchBtn) {
+        rightSidebarSearchBtn.addEventListener("click", () => {
+            navigate("search");
+            setTimeout(() => {
+                const sInput = $("searchInput");
+                if (sInput) sInput.focus();
+            }, 60);
+        });
+    }
+
+    if (rightSidebarOpenQueueBtn) {
+        rightSidebarOpenQueueBtn.addEventListener("click", () => {
+            navigate("music");
+            toast("Now viewing full music & queue", "fa-bars-staggered");
+        });
+    }
+
+    if (rightSidebarLikeBtn) {
+        rightSidebarLikeBtn.addEventListener("click", () => toggleLike());
+    }
+
+    if (rightSidebarFollowBtn) {
+        rightSidebarFollowBtn.addEventListener("click", () => {
+            const isFollowing = rightSidebarFollowBtn.classList.contains("following");
+            rightSidebarFollowBtn.classList.toggle("following", !isFollowing);
+            rightSidebarFollowBtn.textContent = !isFollowing ? "Following" : "Follow";
+            toast(!isFollowing ? "Added artist to your Library" : "Removed artist from Library", "fa-user-check");
+        });
+    }
+
+    function updateRightSidebar(track, nextTrack) {
+        if (!track) {
+            if (rightSidebarEmpty) rightSidebarEmpty.style.display = "flex";
+            if (rightSidebarContent) rightSidebarContent.style.display = "none";
+            return;
+        }
+
+        // Show active content if a track is playing
+        if (rightSidebarEmpty) rightSidebarEmpty.style.display = "none";
+        if (rightSidebarContent) rightSidebarContent.style.display = "flex";
+
+        if (rightSidebarCover) rightSidebarCover.src = track.img || "../assesst/card1img.jpeg";
+        if (rightSidebarTrackTitle) rightSidebarTrackTitle.textContent = track.title || "Unknown Track";
+        if (rightSidebarTrackArtist) rightSidebarTrackArtist.textContent = track.artist || "Unknown Artist";
+        if (rightSidebarArtistImg) rightSidebarArtistImg.src = track.img || "../assesst/card1img.jpeg";
+        if (rightSidebarArtistName) rightSidebarArtistName.textContent = track.artist || "Artist";
+
+        if (rightSidebarLikeBtn) {
+            const isLiked = likedSongs.has(track.id);
+            rightSidebarLikeBtn.className = isLiked ? "fa-solid fa-heart now-playing-like-btn liked" : "fa-regular fa-heart now-playing-like-btn";
+        }
+
+        if (nextTrack) {
+            if (rightSidebarNextImg) rightSidebarNextImg.src = nextTrack.img || "../assesst/card2img.jpeg";
+            if (rightSidebarNextName) rightSidebarNextName.textContent = nextTrack.title || "";
+            if (rightSidebarNextArtist) rightSidebarNextArtist.textContent = nextTrack.artist || "";
+        }
+    }
+
+    setRightSidebarState(isRightSidebarOpen);
 
     // Top Navigation Auth Buttons (Sign up / Log in)
     const navSignUpBtn = $("navSignUpBtn");
@@ -2317,6 +3749,10 @@ function runApp() {
             songs: [...pendingPlaylistSongs]
         };
         userPlaylists.push(pl);
+        try { localStorage.setItem("spotify_userPlaylists", JSON.stringify(userPlaylists)); } catch (e) {}
+        if (typeof spotifyApi !== "undefined") {
+            spotifyApi.createPlaylist(name, desc).catch(() => {});
+        }
         pendingPlaylistSongs = [];
         renderSidebarPlaylists();
         if (profileModule) profileModule.updatePlaylists(userPlaylists);
@@ -2481,6 +3917,7 @@ function runApp() {
     // =========================================================================
     function loadTrack(idx, autoPlay = true) {
         currentTrackIndex = (idx + playlist.length) % playlist.length;
+        try { localStorage.setItem("spotify_currentTrack", currentTrackIndex); } catch (e) {}
         const t = playlist[currentTrackIndex];
         albumArt.src = t.img;
         trackTitle.textContent = t.title;
@@ -2493,6 +3930,7 @@ function runApp() {
         chordIdx = 0;
         updateLikeIcon();
         highlightActiveCard();
+        updateRightSidebar(t, playlist[(currentTrackIndex + 1) % playlist.length]);
 
         // Render Music Page with current track details
         musicModule.render(
@@ -2589,6 +4027,9 @@ function runApp() {
         const t = playlist[currentTrackIndex];
         const isLiked = likedSongs.has(t.id);
         likeBtn.className = isLiked ? "fa-solid fa-heart like-icon liked" : "fa-regular fa-heart like-icon";
+        if ($("rightSidebarLikeBtn")) {
+            $("rightSidebarLikeBtn").className = isLiked ? "fa-solid fa-heart now-playing-like-btn liked" : "fa-regular fa-heart now-playing-like-btn";
+        }
         musicModule.updateLikeState(isLiked);
     }
 
@@ -2625,7 +4066,11 @@ function runApp() {
             likedSongs.add(t.id);
             toast("Added to Liked Songs", "fa-heart");
         }
+        try { localStorage.setItem("spotify_likedSongs", JSON.stringify([...likedSongs])); } catch (e) {}
         updateLikeIcon();
+        if (typeof spotifyApi !== "undefined") {
+            spotifyApi.toggleLike(t.id).catch(() => {});
+        }
     });
 
     // Progress bar
@@ -2641,6 +4086,7 @@ function runApp() {
     volumeBar.addEventListener("input", () => {
         volume = parseFloat(volumeBar.value) / 100;
         isMuted = volume === 0;
+        try { localStorage.setItem("spotify_volume", volume); } catch (e) {}
         if (audioCtx && masterGain) masterGain.gain.setValueAtTime(volume * 0.3, audioCtx.currentTime);
         updateVolumeUI();
     });
@@ -2755,8 +4201,38 @@ function runApp() {
         toast
     });
 
-    // Start on home
-    navigate("home", false);
+    // Start on appropriate page based on file name or data-page attribute
+    const pageUrlMap = {
+        "index.html": "home",
+        "search.html": "search",
+        "library.html": "library",
+        "create-playlist.html": "createPlaylist",
+        "podcasts.html": "podcasts",
+        "premium.html": "premium",
+        "profile.html": "profile",
+        "music.html": "music",
+        "auth.html": "auth"
+    };
+    const currentFileName = (window.location.pathname.split("/").pop() || "index.html").toLowerCase();
+    const dataPage = (document.body.dataset.page || "").toLowerCase();
+
+    // Highlight active link if on a standalone footer or sidebar page
+    if (currentFileName && currentFileName !== "index.html") {
+        $$(".footer-link, .sidebar-legal-link").forEach(l => {
+            const lHref = (l.getAttribute("href") || "").split("/").pop().toLowerCase();
+            l.classList.toggle("active-footer-link", lHref === currentFileName);
+        });
+    }
+
+    const initialPage = dataPage || pageUrlMap[currentFileName] || "home";
+    const targetElement = $(`page${initialPage.charAt(0).toUpperCase() + initialPage.slice(1)}`);
+    if (pageUrlMap[currentFileName] || targetElement) {
+        navigate(initialPage, false);
+    } else {
+        // Standalone footer page (about, jobs, etc.)
+        currentPage = initialPage;
+        $$(".nav-option").forEach(n => n.classList.remove("active-nav"));
+    }
 }
 
 if (document.readyState === "loading") {

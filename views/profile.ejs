@@ -1,0 +1,54 @@
+<%- include('partials/head', { pageTitle: 'Spotify - Profile' }) %>
+
+<div class="main">
+    <%- include('partials/sidebar', { activePage: 'profile', playlists: typeof playlists !== 'undefined' ? playlists : [] }) %>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <div class="main-content" id="mainContent">
+        <%- include('partials/topbar', { activePage: 'profile', user: typeof user !== 'undefined' ? user : null }) %>
+
+        <div class="profile-page-container" style="padding: 1.5rem 0;">
+            <!-- Profile Header Banner -->
+            <div style="display:flex; align-items:flex-end; gap: 2rem; padding: 2.5rem; background: linear-gradient(180deg, #535353 0%, #181818 100%); border-radius: 8px; margin-bottom: 2rem;">
+                <div style="position:relative;">
+                    <img src="<%= (typeof user !== 'undefined' && user && user.avatar) ? user.avatar : '/assesst/logo.png' %>" alt="User avatar" style="width: 160px; height: 160px; border-radius: 50%; object-fit: cover; box-shadow: 0 8px 30px rgba(0,0,0,0.6);">
+                </div>
+                <div>
+                    <span style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Profile</span>
+                    <h1 style="font-size: 3.5rem; font-weight: 900; margin: 0.2rem 0; color: #fff;"><%= (typeof user !== 'undefined' && user) ? user.name : 'Alex Morgan' %></h1>
+                    <div style="display:flex; align-items:center; gap: 0.75rem; color: #b3b3b3; font-size: 0.9rem;">
+                        <span><%= typeof playlists !== 'undefined' ? playlists.length : 1 %> Public Playlists</span>
+                        <span>•</span>
+                        <span><%= typeof likes !== 'undefined' ? likes.length : 3 %> Liked Songs</span>
+                        <span>•</span>
+                        <span class="badge" style="font-size: 0.75rem; padding: 0.2rem 0.6rem;"><%= (typeof user !== 'undefined' && user) ? user.tier : 'Spotify Free' %></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Public Playlists by User -->
+            <h2>Public Playlists</h2>
+            <div class="cards-container">
+                <% if (typeof playlists !== 'undefined' && playlists.length > 0) { %>
+                    <% playlists.forEach(function(pl) { %>
+                        <div class="card" data-playlist-id="<%= pl.id %>">
+                            <div class="card-img-wrapper">
+                                <img src="<%= pl.cover || '/assesst/card1img.jpeg' %>" class="card-img" alt="<%= pl.name %>">
+                                <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                            </div>
+                            <p class="card-title"><%= pl.name %></p>
+                            <p class="card-info"><%= pl.desc || 'By Alex Morgan' %></p>
+                        </div>
+                    <% }); %>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/right-rail') %>
+    <%- include('partials/player') %>
+</div>
+
+<%- include('partials/modals') %>
+<%- include('partials/scripts') %>
+

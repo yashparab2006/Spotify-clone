@@ -138,28 +138,47 @@ export function initAuthModule({ onLoginSuccess, onRegisterSuccess, onLogout, to
             loginBtn.disabled = true;
             loginBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Logging in...`;
 
-            setTimeout(() => {
+            (async () => {
+                let userObj = null;
+                if (typeof spotifyApi !== "undefined") {
+                    try {
+                        const res = await spotifyApi.login(email, pass);
+                        if (res && res.data && res.data.user) {
+                            userObj = res.data.user;
+                        } else if (res && res.error && !res.isOffline) {
+                            loginBtn.disabled = false;
+                            loginBtn.innerHTML = "Log In";
+                            toast(res.error, "fa-circle-exclamation");
+                            return;
+                        }
+                    } catch (err) {
+                        console.warn("Backend auth failed, using local fallback", err);
+                    }
+                }
+
+                if (!userObj) {
+                    const displayName = email.includes("@") ? email.split("@")[0] : email;
+                    const formattedName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+                    userObj = {
+                        name: formattedName,
+                        email: email.includes("@") ? email : `${email}@spotify-user.com`,
+                        avatar: "./assesst/logo.png",
+                        tier: "Spotify Free",
+                        isPremium: false
+                    };
+                }
+
                 loginBtn.disabled = false;
                 loginBtn.innerHTML = "Log In";
 
-                // Extract display name from email or use existing
-                const displayName = email.includes("@") ? email.split("@")[0] : email;
-                const formattedName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-
                 authState.isLoggedIn = true;
-                authState.currentUser = {
-                    name: formattedName,
-                    email: email.includes("@") ? email : `${email}@spotify-user.com`,
-                    avatar: "./assesst/logo.png",
-                    tier: "Spotify Free",
-                    isPremium: false
-                };
+                authState.currentUser = userObj;
 
                 loginForm.reset();
                 if (onLoginSuccess) onLoginSuccess(authState.currentUser);
-                toast(`Welcome back, ${formattedName}!`, "fa-circle-check");
+                toast(`Welcome back, ${userObj.name}!`, "fa-circle-check");
                 navigate("home");
-            }, 750);
+            })();
         });
     }
 
@@ -191,29 +210,53 @@ export function initAuthModule({ onLoginSuccess, onRegisterSuccess, onLogout, to
             regBtn.disabled = true;
             regBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...`;
 
-            setTimeout(() => {
+            (async () => {
+                let userObj = null;
+                if (typeof spotifyApi !== "undefined") {
+                    try {
+                        const res = await spotifyApi.register(name, email, pass, regYear ? regYear.value : null);
+                        if (res && res.data && res.data.user) {
+                            userObj = res.data.user;
+                        } else if (res && res.error && !res.isOffline) {
+                            regBtn.disabled = false;
+                            regBtn.innerHTML = "Sign Up";
+                            toast(res.error, "fa-circle-exclamation");
+                            return;
+                        }
+                    } catch (err) {
+                        console.warn("Backend register failed, using local fallback", err);
+                    }
+                }
+
+                if (!userObj) {
+                    userObj = {
+                        name: name,
+                        email: email,
+                        avatar: "./assesst/logo.png",
+                        tier: "Spotify Free",
+                        isPremium: false
+                    };
+                }
+
                 regBtn.disabled = false;
                 regBtn.innerHTML = "Sign Up";
 
                 authState.isLoggedIn = true;
-                authState.currentUser = {
-                    name: name,
-                    email: email,
-                    avatar: "./assesst/logo.png",
-                    tier: "Spotify Free",
-                    isPremium: false
-                };
+                authState.currentUser = userObj;
 
                 registerForm.reset();
                 if (onRegisterSuccess) onRegisterSuccess(authState.currentUser);
-                toast(`Welcome to Spotify, ${name}! Your account is ready.`, "fa-circle-check");
+                toast(`Welcome to Spotify, ${userObj.name}! Your account is ready.`, "fa-circle-check");
                 navigate("profile");
-            }, 850);
+            })();
         });
     }
 
     // Logout Action function
     function performLogout() {
+        if (typeof spotifyApi !== "undefined") {
+            spotifyApi.logout();
+        }
         authState.isLoggedIn = false;
         authState.currentUser = {
             name: "Guest Listener",

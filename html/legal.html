@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="icon" href="../assesst/logo.png">
+    <title>Spotify - Legal Information</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+
+</head>
+<body data-page="legal">
+    <div class="main">
+        <!-- ========== SIDEBAR ========== -->
+        <div class="sidebar">
+            <div class="nav">
+                <div class="nav-option" id="navHome">
+                    <i class="fa-solid fa-house"></i>
+                    <a href="index.html">Home</a>
+                </div>
+                <div class="nav-option" id="navSearch">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <a href="search.html">Search</a>
+                </div>
+            </div>
+            <div class="library">
+                <div class="options">
+                    <div class="lib-option nav-option" id="navLibrary">
+                        <img src="../assesst/library_icon.png" alt="Library">
+                        <a href="library.html">Your Library</a>
+                    </div>
+                    <div class="icons">
+                        <i class="fa-solid fa-plus" id="addPlaylistIcon" title="Create playlist"></i>
+                        <i class="fa-solid fa-arrow-right" id="expandLibIcon"></i>
+                    </div>
+                </div>
+                <div class="lib-boxes">
+                    <div class="box" id="createPlaylistBox">
+                        <p class="box-p1">Create your first playlist</p>
+                        <p class="box-p2">It's easy, we'll help you</p>
+                        <button class="badge" id="createPlaylistBtn">Create playlist</button>
+                    </div>
+                    <div class="box" id="browsePodcastBox">
+                        <p class="box-p1">Let's find some podcasts to follow</p>
+                        <p class="box-p2">We'll keep you updated on new episodes</p>
+                        <button class="badge" id="browsePodcastsBtn">Browse podcasts</button>
+                    </div>
+                </div>
+                <!-- User-created playlists appear here -->
+                <div class="sidebar-playlists" id="sidebarPlaylists"></div>
+
+                <!-- Spotify Sidebar Bottom Legal & Privacy Footer -->
+                <div class="sidebar-legal-footer">
+                    <div class="sidebar-legal-links">
+                        <a href="legal.html" class="sidebar-legal-link">Legal</a>
+                        <a href="safety-privacy-center.html" class="sidebar-legal-link">Safety & Privacy Center</a>
+                        <a href="privacy-policy.html" class="sidebar-legal-link">Privacy Policy</a>
+                        <a href="cookies.html" class="sidebar-legal-link">Cookies</a>
+                        <a href="about-ads.html" class="sidebar-legal-link">About Ads</a>
+                        <a href="accessibility.html" class="sidebar-legal-link">Accessibility</a>
+                        <a href="cookies.html" class="sidebar-legal-link">Cookies</a>
+                    </div>
+                    <button class="sidebar-lang-btn" id="sidebarLangBtn" type="button" title="Choose language">
+                        <i class="fa-solid fa-globe"></i> <span id="sidebarLangLabel">English</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== MAIN CONTENT ========== -->
+        <div class="main-content" id="mainContent">
+            <!-- Sticky Navigation Bar -->
+            <div class="sticky-nav">
+                <div class="sticky-nav-icons">
+                    <button class="nav-circle-btn" id="navBackBtn" title="Go back"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button class="nav-circle-btn" id="navForwardBtn" title="Go forward"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+                <!-- Search bar (hidden on Home, visible on Search page) -->
+                <div class="search-bar" id="searchBar" style="display:none;">
+                    <i class="fa-solid fa-magnifying-glass search-bar-icon"></i>
+                    <input type="text" id="searchInput" placeholder="What do you want to play?" autocomplete="off" spellcheck="false">
+                    <button class="clear-search" id="clearSearchBtn" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="sticky-nav-options">
+                    <button class="badge nav-item hide" id="navPremiumBtn">Explore Premium</button>
+                    <button class="badge nav-item dark-badge" id="navInstallBtn"><i class="fa-regular fa-circle-down" style="margin-right:5px"></i> Install App</button>
+                    <!-- Auth Buttons (Visible when Logged Out) -->
+                    <div class="nav-auth-buttons" id="navAuthButtons" style="display:none;">
+                        <button class="badge dark-badge" id="navSignUpBtn">Sign up</button>
+                        <button class="badge" id="navLoginBtn">Log in</button>
+                    </div>
+                    <div class="profile-nav-wrapper" id="navProfileWrapper">
+                        <button class="nav-user-btn" id="navUserBtn" title="Profile menu">
+                            <i class="fa-regular fa-user nav-user-icon"></i>
+                        </button>
+                        <!-- Profile Dropdown Menu -->
+                        <div class="profile-dropdown" id="profileDropdown" style="display:none;">
+                            <div class="dropdown-header">
+                                <span class="dropdown-name" id="dropdownUserName">Alex Morgan</span>
+                                <span class="dropdown-tier" id="dropdownUserTier">Spotify Free</span>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-item" id="dropdownProfileItem"><i class="fa-regular fa-user"></i> Profile</div>
+                            <div class="dropdown-item" id="dropdownAuthItem"><i class="fa-solid fa-user-plus"></i> Sign in / Register</div>
+                            <div class="dropdown-item" id="dropdownPremiumItem"><i class="fa-solid fa-gem"></i> Explore Premium</div>
+                            <div class="dropdown-item" id="dropdownSettingsItem"><i class="fa-solid fa-gear"></i> Settings</div>
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-item" id="dropdownLogoutItem"><i class="fa-solid fa-arrow-right-from-bracket"></i> Log out</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            
+        <div class="info-page-container">
+            <div class="info-hero hero-teal">
+                <a href="index.html" class="info-back-link"><i class="fa-solid fa-arrow-left"></i> Back to Home</a>
+                <span class="info-badge">LEGAL & COMPLIANCE</span>
+                <h1 class="info-title">Spotify Legal Terms and Notices.</h1>
+                <p class="info-sub">Read our terms of use, intellectual property policies, copyright guidelines, and commercial licensing agreements.</p>
+                <div class="info-actions">
+                    <button class="badge" onclick="alert('Downloading Spotify Terms of Service (PDF)...')">Download Terms (PDF)</button><button class="badge dark-badge" onclick="openFooterPage('safety-privacy-center.html')">Safety Center</button>
+                </div>
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+                    <h4>Terms of Service</h4>
+                    <p>The definitive user agreement governing the use of Spotify applications, streaming services, and subscription features.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-copyright"></i></div>
+                    <h4>Copyright & Intellectual Property</h4>
+                    <p>Information on DMCA takedown procedures, reporting copyright infringement, and licensing partner guidelines.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-handshake"></i></div>
+                    <h4>Fair Play Guidelines</h4>
+                    <p>Rules regarding community behavior, preventing stream manipulation, and acceptable audio usage.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-icon"><i class="fa-solid fa-file-contract"></i></div>
+                    <h4>Trademark & Brand Licensing</h4>
+                    <p>Guidelines for partners, developers, and media outlets referencing Spotify logos, wordmarks, and visual assets.</p>
+                </div>
+            </div>
+        
+            <!-- ===== SPOTIFY FOOTER ===== -->
+<footer class="spotify-footer">
+                    <div class="footer-top-section">
+                        <div class="footer-nav-columns">
+                            <div class="footer-column">
+                                <p class="footer-col-title">Company</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="about.html" class="footer-link">About</a></li>
+                                    <li><a href="jobs.html" class="footer-link">Jobs</a></li>
+                                    <li><a href="for-the-record.html" class="footer-link">For the Record</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Communities</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="for-artists.html" class="footer-link">For Artists</a></li>
+                                    <li><a href="for-creators.html" class="footer-link">For Creators</a></li>
+                                    <li><a href="for-authors.html" class="footer-link">For Authors</a></li>
+                                    <li><a href="developers.html" class="footer-link">Developers</a></li>
+                                    <li><a href="advertising.html" class="footer-link">Advertising</a></li>
+                                    <li><a href="investors.html" class="footer-link">Investors</a></li>
+                                    <li><a href="vendors.html" class="footer-link">Vendors</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Useful links</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="support.html" class="footer-link">Support</a></li>
+                                    <li><a href="free-mobile-app.html" class="footer-link">Free Mobile App</a></li>
+                                    <li><a href="popular-by-country.html" class="footer-link">Popular by Country</a></li>
+                                    <li><a href="top-song-lyrics.html" class="footer-link">Top Song Lyrics</a></li>
+                                    <li><a href="import-your-music.html" class="footer-link">Import your music</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Spotify Plans</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="premium-standard.html" class="footer-link">Premium Standard</a></li>
+                                    <li><a href="premium-platinum.html" class="footer-link">Premium Platinum</a></li>
+                                    <li><a href="premium-student.html" class="footer-link">Premium Student</a></li>
+                                    <li><a href="spotify-free.html" class="footer-link">Spotify Free</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="footer-social-links">
+                            <a href="https://instagram.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Instagram" title="Instagram">
+                                <i class="fa-brands fa-instagram"></i>
+                            </a>
+                            <a href="https://twitter.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Twitter" title="Twitter / X">
+                                <i class="fa-brands fa-x-twitter"></i>
+                            </a>
+                            <a href="https://facebook.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Facebook" title="Facebook">
+                                <i class="fa-brands fa-facebook-f"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="footer-divider-line"></div>
+
+                    <div class="footer-bottom-section">
+                        <p class="footer-copyright">© 2026 Spotify AB</p>
+                    </div>
+</footer>
+        </div>
+    
+        </div>
+
+        <!-- ========== RIGHT SIDEBAR (SLIDING RAIL & EXPANDED PANEL) ========== -->
+        <div class="right-sidebar collapsed" id="rightSidebar">
+            <!-- Draggable Left Sash to Slide / Resize Window -->
+            <div class="right-sidebar-slide-sash" id="rightSidebarSlideSash" title="Drag to slide window"></div>
+
+            <!-- 1. Collapsed Rail View (Matches User Screenshot 2) -->
+            <div class="right-sidebar-rail" id="rightSidebarRail" title="Now playing view">
+                <button class="rail-expand-btn" id="railExpandBtn" title="Now playing view" aria-label="Expand right sidebar">
+                    <i class="fa-solid fa-chevron-left"></i>
+                    <span class="custom-tooltip">Now playing view</span>
+                </button>
+            </div>
+
+            <!-- 2. Expanded Panel View (Matches User Screenshot 1) -->
+            <div class="right-sidebar-expanded-content" id="rightSidebarExpanded">
+                <div class="right-sidebar-header">
+                    <button class="right-sidebar-icon-btn" id="closeRightSidebarBtn" title="Collapse sidebar">
+                        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M1 3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3zm1.5 0v10a.5.5 0 0 0 .5.5H13a.5.5 0 0 0 .5-.5V3a.5.5 0 0 0-.5-.5H3a.5.5 0 0 0-.5.5zm8 2.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zM5.354 5.646a.5.5 0 1 0-.708.708L6.293 8l-1.647 1.646a.5.5 0 0 0 .708.708l2-2a.5.5 0 0 0 0-.708l-2-2z"/>
+                        </svg>
+                    </button>
+                    <span class="right-sidebar-header-title" id="rightSidebarHeaderTitle">Now playing</span>
+                    <div style="width:36px;"></div>
+                </div>
+
+                <!-- Empty State: Matches User Screenshot -->
+                <div class="right-sidebar-empty" id="rightSidebarEmpty">
+                    <h2 class="right-sidebar-title">Find something to play</h2>
+                    <button class="badge search-pill-btn" id="rightSidebarSearchBtn">Search</button>
+                </div>
+
+                <!-- Active Now Playing Content -->
+                <div class="right-sidebar-content" id="rightSidebarContent" style="display:none;">
+                    <div class="now-playing-cover-wrapper">
+                        <img src="../assesst/card1img.jpeg" id="rightSidebarCover" alt="Cover" class="now-playing-large-cover">
+                    </div>
+                    <div class="now-playing-meta">
+                        <div class="now-playing-titles">
+                            <h3 class="now-playing-track-title" id="rightSidebarTrackTitle">Top 50 - Global</h3>
+                            <p class="now-playing-track-artist" id="rightSidebarTrackArtist">Spotify Charts</p>
+                        </div>
+                        <i class="fa-regular fa-heart now-playing-like-btn" id="rightSidebarLikeBtn" title="Save to Your Library"></i>
+                    </div>
+
+                    <!-- About the Artist Card -->
+                    <div class="about-artist-card" id="rightSidebarArtistCard">
+                        <div class="about-artist-header">
+                            <img src="../assesst/card1img.jpeg" id="rightSidebarArtistImg" class="about-artist-avatar" alt="Artist">
+                            <div class="about-artist-info">
+                                <h4>About the artist</h4>
+                                <span id="rightSidebarArtistName">Spotify Charts</span>
+                            </div>
+                        </div>
+                        <p class="about-artist-bio" id="rightSidebarArtistBio">Your daily update of the most played tracks right now.</p>
+                        <div class="about-artist-footer">
+                            <span id="rightSidebarMonthlyListeners">626,892,110 monthly listeners</span>
+                            <button class="badge dark-badge" id="rightSidebarFollowBtn">Follow</button>
+                        </div>
+                    </div>
+
+                    <!-- Next in Queue Preview -->
+                    <div class="right-sidebar-queue-box">
+                        <div class="queue-box-header">
+                            <span class="queue-title">Next in queue</span>
+                            <button class="queue-open-link" id="rightSidebarOpenQueueBtn">Open queue</button>
+                        </div>
+                        <div class="queue-next-track" id="rightSidebarNextTrack">
+                            <img src="../assesst/card2img.jpeg" id="rightSidebarNextImg" alt="Next">
+                            <div class="queue-next-meta">
+                                <span class="queue-next-name" id="rightSidebarNextName">Daily Mix 1</span>
+                                <span class="queue-next-artist" id="rightSidebarNextArtist">Spotify</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== MUSIC PLAYER BAR ========== -->
+        <div class="music-player">
+            <div class="album" id="playerAlbumSection" title="Click to view now playing screen" style="cursor:pointer;">
+                <img src="../assesst/card1img.jpeg" class="album-img" id="albumArt" alt="Album">
+                <div class="album-info">
+                    <span class="album-title" id="trackTitle">Top 50 - Global</span>
+                    <span class="album-artist" id="trackArtist">Spotify Charts</span>
+                </div>
+                <i class="fa-regular fa-heart like-icon" id="likeBtn" title="Save to Your Library"></i>
+            </div>
+            <div class="player">
+                <div class="player-controls">
+                    <img src="../assesst/player_icon1.png" class="player-control-icon" id="shuffleBtn" title="Shuffle">
+                    <img src="../assesst/player_icon2.png" class="player-control-icon" id="prevBtn" title="Previous">
+                    <button class="main-play-btn" id="playPauseBtn" title="Play">
+                        <i class="fa-solid fa-play" id="playPauseIcon"></i>
+                    </button>
+                    <img src="../assesst/player_icon4.png" class="player-control-icon" id="nextBtn" title="Next">
+                    <img src="../assesst/player_icon5.png" class="player-control-icon" id="repeatBtn" title="Repeat">
+                </div>
+                <div class="playback-bar">
+                    <span class="curr-time" id="currTime">0:00</span>
+                    <input type="range" min="0" max="100" value="0" class="progress-bar" id="progressBar" step="0.1">
+                    <span class="tot-time" id="totTime">3:33</span>
+                </div>
+            </div>
+            <div class="controls">
+                <i class="fa-solid fa-volume-high volume-icon" id="volumeIcon" title="Mute"></i>
+                <input type="range" min="0" max="100" value="75" class="volume-bar" id="volumeBar">
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <div class="modal-overlay" id="editProfileModal" style="display:none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Profile details</h3>
+                <button class="modal-close" id="closeProfileModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="edit-profile-body">
+                <div class="avatar-edit-box">
+                    <img src="../assesst/logo.png" id="avatarPreview" alt="Profile avatar">
+                    <div class="avatar-overlay-label"><i class="fa-solid fa-camera"></i> Change</div>
+                </div>
+                <div class="profile-inputs">
+                    <div class="form-group">
+                        <label for="profileNameInput">Name</label>
+                        <input type="text" id="profileNameInput" placeholder="Display name" maxlength="40" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="profileBioInput">Bio</label>
+                        <textarea id="profileBioInput" placeholder="Add an optional bio" rows="3" maxlength="150"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="badge dark-badge" id="cancelProfileBtn">Cancel</button>
+                <button class="badge" id="saveProfileBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Premium Subscribe / Checkout Modal -->
+    <div class="modal-overlay" id="subscribeModal" style="display:none;">
+        <div class="modal-card premium-checkout-card">
+            <div class="modal-header">
+                <h3 id="checkoutPlanTitle">Get Spotify Premium</h3>
+                <button class="modal-close" id="closeCheckoutModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="checkout-body">
+                <div class="checkout-badge-row">
+                    <span class="plan-price-tag" id="checkoutPlanPrice">$10.99 / month</span>
+                    <span class="plan-promo-tag" id="checkoutPromoTag">1 month free trial</span>
+                </div>
+                <p id="checkoutPlanDesc">Ad-free music listening, play offline, on-demand playback.</p>
+                <div class="checkout-payment-box">
+                    <label style="font-size:0.82rem;font-weight:600;color:#b3b3b3;margin-bottom:0.4rem;display:block;">Select Payment Method (Simulated)</label>
+                    <div class="payment-method-options">
+                        <label class="payment-radio selected">
+                            <input type="radio" name="payment" checked>
+                            <i class="fa-brands fa-cc-visa"></i> Visa •••• 4242
+                        </label>
+                        <label class="payment-radio">
+                            <input type="radio" name="payment">
+                            <i class="fa-brands fa-paypal"></i> PayPal
+                        </label>
+                    </div>
+                </div>
+                <div class="checkout-terms">
+                    By confirming, you authorize recurring payments. Cancel anytime in your Account settings.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="badge dark-badge" id="cancelCheckoutBtn">Cancel</button>
+                <button class="badge create-btn" id="confirmSubscribeBtn">Start 1 Month Free</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Language Selector Modal -->
+    <div class="modal-overlay" id="langModalOverlay" style="display:none;">
+        <div class="modal-card lang-modal-card">
+            <div class="modal-header">
+                <h3>Choose a language</h3>
+                <button class="modal-close" id="closeLangModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="checkout-body" style="padding:1.2rem 1.6rem 1.6rem;">
+                <p style="color:#a7a7a7;font-size:0.86rem;margin:0 0 1rem;line-height:1.4;">This updates what you read on Spotify and adjusts region settings.</p>
+                <div class="lang-grid">
+                    <button class="lang-item active-lang" data-lang="English"><strong>English</strong><span>English</span></button>
+                    <button class="lang-item" data-lang="Español"><strong>Español</strong><span>Spanish</span></button>
+                    <button class="lang-item" data-lang="Français"><strong>Français</strong><span>French</span></button>
+                    <button class="lang-item" data-lang="Deutsch"><strong>Deutsch</strong><span>German</span></button>
+                    <button class="lang-item" data-lang="Italiano"><strong>Italiano</strong><span>Italian</span></button>
+                    <button class="lang-item" data-lang="Português"><strong>Português</strong><span>Portuguese (Brazil)</span></button>
+                    <button class="lang-item" data-lang="हिन्दी"><strong>हिन्दी</strong><span>Hindi</span></button>
+                    <button class="lang-item" data-lang="日本語"><strong>日本語</strong><span>Japanese</span></button>
+                    <button class="lang-item" data-lang="한국어"><strong>한국어</strong><span>Korean</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="../bundle.js"></script>
+</body>
+</html>

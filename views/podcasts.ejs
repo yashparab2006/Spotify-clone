@@ -1,0 +1,50 @@
+<%- include('partials/head', { pageTitle: 'Spotify - Podcasts & Shows' }) %>
+
+<div class="main">
+    <%- include('partials/sidebar', { activePage: 'podcasts', playlists: typeof playlists !== 'undefined' ? playlists : [] }) %>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <div class="main-content" id="mainContent">
+        <%- include('partials/topbar', { activePage: 'podcasts', user: typeof user !== 'undefined' ? user : null }) %>
+
+        <div class="podcasts-page-container" style="padding: 1.5rem 0;">
+            <div style="margin-bottom: 2rem;">
+                <h1 style="font-size: 2.2rem; font-weight: 800; color: #fff;">Podcasts</h1>
+                <p style="color: #b3b3b3; font-size: 0.95rem;">Stories, news, comedy, and expert discussions curated for you.</p>
+            </div>
+
+            <!-- Categories -->
+            <h2>Popular Categories</h2>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin: 1rem 0 2rem;">
+                <% const cats = ['All', 'Technology', 'True Crime', 'Comedy', 'News', 'Health & Fitness']; %>
+                <% cats.forEach(function(c, i) { %>
+                    <button class="badge <%= i === 0 ? '' : 'dark-badge' %>" style="padding: 0.5rem 1.25rem;"><%= c %></button>
+                <% }); %>
+            </div>
+
+            <!-- Shows Grid -->
+            <h2>Featured Shows</h2>
+            <div class="cards-container">
+                <% if (typeof podcasts !== 'undefined' && podcasts.length > 0) { %>
+                    <% podcasts.forEach(function(p) { %>
+                        <div class="card podcast-show-card" data-podcast-id="<%= p.id %>">
+                            <div class="card-img-wrapper">
+                                <img src="<%= p.cover %>" class="card-img" alt="<%= p.name %>">
+                                <button class="card-play-btn" title="Listen"><i class="fa-solid fa-play"></i></button>
+                            </div>
+                            <p class="card-title"><%= p.name %></p>
+                            <p class="card-info"><%= p.host %> • <%= p.category %></p>
+                        </div>
+                    <% }); %>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/right-rail') %>
+    <%- include('partials/player') %>
+</div>
+
+<%- include('partials/modals') %>
+<%- include('partials/scripts') %>
+

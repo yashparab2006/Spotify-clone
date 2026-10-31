@@ -1,0 +1,60 @@
+<%- include('partials/head', { pageTitle: 'Spotify - Search' }) %>
+
+<div class="main">
+    <%- include('partials/sidebar', { activePage: 'search', playlists: typeof playlists !== 'undefined' ? playlists : [] }) %>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <div class="main-content" id="mainContent">
+        <%- include('partials/topbar', { activePage: 'search', searchQuery: typeof searchQuery !== 'undefined' ? searchQuery : '', user: typeof user !== 'undefined' ? user : null }) %>
+
+        <div class="search-page-container" style="padding: 1.5rem 0;">
+            <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">Browse all</h2>
+            <div class="browse-categories-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.25rem;">
+                <% const genres = [
+                    { name: 'Pop', color: '#8d67ab', icon: 'fa-music' },
+                    { name: 'Hip-Hop', color: '#e13300', icon: 'fa-headphones' },
+                    { name: 'Rock', color: '#e91429', icon: 'fa-guitar' },
+                    { name: 'Bollywood', color: '#b02897', icon: 'fa-compact-disc' },
+                    { name: 'Indie', color: '#608108', icon: 'fa-drum' },
+                    { name: 'Lo-Fi Chill', color: '#477d95', icon: 'fa-cloud-moon' },
+                    { name: 'Electronic', color: '#0d73ec', icon: 'fa-bolt' },
+                    { name: 'Classical', color: '#7d4b32', icon: 'fa-violin' },
+                    { name: 'Charts', color: '#1db954', icon: 'fa-chart-line' },
+                    { name: 'Podcasts', color: '#27856a', icon: 'fa-podcast' }
+                ]; %>
+                <% genres.forEach(function(g) { %>
+                    <div class="genre-card" style="background-color: <%= g.color %>; border-radius: 8px; padding: 1rem; height: 120px; position: relative; overflow: hidden; cursor: pointer;">
+                        <h3 style="font-size: 1.2rem; font-weight: 700; color: #fff;"><%= g.name %></h3>
+                        <i class="fa-solid <%= g.icon %>" style="position: absolute; right: -10px; bottom: -10px; font-size: 4rem; opacity: 0.25; transform: rotate(15deg);"></i>
+                    </div>
+                <% }); %>
+            </div>
+
+            <!-- Search Results Container -->
+            <div id="searchResultsSection" style="margin-top: 2rem; <%= (typeof results !== 'undefined' && results.length > 0) ? '' : 'display:none;' %>">
+                <h2>Top Results</h2>
+                <div class="cards-container">
+                    <% if (typeof results !== 'undefined' && results.length > 0) { %>
+                        <% results.forEach(function(track) { %>
+                            <div class="card" data-song-id="<%= track.id %>">
+                                <div class="card-img-wrapper">
+                                    <img src="<%= track.img %>" class="card-img" alt="<%= track.title %>">
+                                    <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                                </div>
+                                <p class="card-title"><%= track.title %></p>
+                                <p class="card-info"><%= track.artist %></p>
+                            </div>
+                        <% }); %>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/right-rail') %>
+    <%- include('partials/player') %>
+</div>
+
+<%- include('partials/modals') %>
+<%- include('partials/scripts') %>
+

@@ -1,0 +1,155 @@
+<%- include('partials/head', { pageTitle: 'Spotify - Web Player: Music for everyone' }) %>
+
+<div class="main">
+    <%- include('partials/sidebar', { activePage: 'home', playlists: typeof playlists !== 'undefined' ? playlists : [] }) %>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <div class="main-content" id="mainContent">
+        <%- include('partials/topbar', { activePage: 'home', user: typeof user !== 'undefined' ? user : null }) %>
+
+        <!-- Filter Chips Header -->
+        <div class="content-filter-chips" style="display:flex;gap:0.5rem;padding:0.75rem 0 1rem;">
+            <button class="badge filter-chip active" data-filter="all">All</button>
+            <button class="badge dark-badge filter-chip" data-filter="music">Music</button>
+            <button class="badge dark-badge filter-chip" data-filter="podcasts">Podcasts</button>
+        </div>
+
+        <!-- Dynamic Greeting & User Banner -->
+        <% if (typeof user !== 'undefined' && user) { %>
+            <div class="home-greeting-banner" style="margin-bottom: 1.5rem;">
+                <h1 style="font-size: 1.8rem; font-weight: 800; color: #fff;">Welcome back, <%= user.name %></h1>
+                <p style="color: #b3b3b3; font-size: 0.9rem;">Your personal mix and top charts are ready.</p>
+            </div>
+        <% } %>
+
+        <!-- ===== SECTION: RECENTLY PLAYED ===== -->
+        <h2>Recently Played</h2>
+        <div class="cards-container" id="recentlyPlayedCards">
+            <% if (typeof tracks !== 'undefined' && tracks.length > 0) { %>
+                <% tracks.slice(0, 3).forEach(function(track) { %>
+                    <div class="card" data-song-id="<%= track.id %>">
+                        <div class="card-img-wrapper">
+                            <img src="<%= track.img %>" class="card-img" alt="<%= track.title %>">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title"><%= track.title %></p>
+                        <p class="card-info"><%= track.artist %></p>
+                    </div>
+                <% }); %>
+            <% } %>
+        </div>
+
+        <!-- ===== SECTION: TRENDING NOW ===== -->
+        <h2>Trending now near you</h2>
+        <div class="cards-container" id="trendingCards">
+            <% if (typeof tracks !== 'undefined' && tracks.length > 0) { %>
+                <% tracks.slice(2, 7).forEach(function(track) { %>
+                    <div class="card" data-song-id="<%= track.id %>">
+                        <div class="card-img-wrapper">
+                            <img src="<%= track.img %>" class="card-img" alt="<%= track.title %>">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title"><%= track.title %></p>
+                        <p class="card-info"><%= track.artist %></p>
+                    </div>
+                <% }); %>
+            <% } %>
+        </div>
+
+        <!-- ===== SECTION: FEATURED CHARTS ===== -->
+        <h2>Featured Charts</h2>
+        <div class="cards-container" id="featuredCards">
+            <% if (typeof tracks !== 'undefined' && tracks.length > 0) { %>
+                <% tracks.forEach(function(track) { %>
+                    <div class="card" data-song-id="<%= track.id %>">
+                        <div class="card-img-wrapper">
+                            <img src="<%= track.img %>" class="card-img" alt="<%= track.title %>">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title"><%= track.title %></p>
+                        <p class="card-info"><%= track.artist %></p>
+                    </div>
+                <% }); %>
+            <% } %>
+        </div>
+
+        <!-- ===== SPOTIFY FOOTER ===== -->
+        <footer class="spotify-footer">
+            <div class="footer-top-section">
+                <div class="footer-nav-columns">
+                    <div class="footer-column">
+                        <p class="footer-col-title">Company</p>
+                        <ul class="footer-col-links">
+                            <li><a href="/footer/about" class="footer-link">About</a></li>
+                            <li><a href="/footer/jobs" class="footer-link">Jobs</a></li>
+                            <li><a href="/footer/for-the-record" class="footer-link">For the Record</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="footer-column">
+                        <p class="footer-col-title">Communities</p>
+                        <ul class="footer-col-links">
+                            <li><a href="/footer/for-artists" class="footer-link">For Artists</a></li>
+                            <li><a href="/footer/for-creator" class="footer-link">For Creators</a></li>
+                            <li><a href="/footer/for-author" class="footer-link">For Authors</a></li>
+                            <li><a href="/footer/developers" class="footer-link">Developers</a></li>
+                            <li><a href="/footer/adversting" class="footer-link">Advertising</a></li>
+                            <li><a href="/footer/investor" class="footer-link">Investors</a></li>
+                            <li><a href="/footer/vendor" class="footer-link">Vendors</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="footer-column">
+                        <p class="footer-col-title">Useful links</p>
+                        <ul class="footer-col-links">
+                            <li><a href="/footer/support" class="footer-link">Support</a></li>
+                            <li><a href="/footer/free-mobile-app" class="footer-link">Free Mobile App</a></li>
+                            <li><a href="/footer/popluar-for-country" class="footer-link">Popular for Country</a></li>
+                            <li><a href="/footer/top-song-lryics" class="footer-link">Top Song Lyrics</a></li>
+                            <li><a href="/footer/import-your-music" class="footer-link">Import your music</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="footer-column">
+                        <p class="footer-col-title">Spotify Plans</p>
+                        <ul class="footer-col-links">
+                            <li><a href="/footer/premium-standard" class="footer-link">Premium Standard</a></li>
+                            <li><a href="/footer/premium-plaitium" class="footer-link">Premium Platinum</a></li>
+                            <li><a href="/footer/premium-student" class="footer-link">Premium Student</a></li>
+                            <li><a href="/footer/spotify-free" class="footer-link">Spotify Free</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="footer-social-icons">
+                    <a href="https://instagram.com/spotify" target="_blank" rel="noopener" class="social-circle-btn" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="https://twitter.com/spotify" target="_blank" rel="noopener" class="social-circle-btn" title="Twitter"><i class="fa-brands fa-twitter"></i></a>
+                    <a href="https://facebook.com/spotify" target="_blank" rel="noopener" class="social-circle-btn" title="Facebook"><i class="fa-brands fa-facebook"></i></a>
+                </div>
+            </div>
+
+            <div class="footer-divider-line"></div>
+
+            <div class="footer-bottom-section">
+                <div class="footer-bottom-legal-links">
+                    <a href="/legal" class="footer-bottom-link">Legal</a>
+                    <a href="/safety-privacy-center" class="footer-bottom-link">Safety & Privacy Center</a>
+                    <a href="/privacy-policy" class="footer-bottom-link">Privacy Policy</a>
+                    <a href="/cookies" class="footer-bottom-link">Cookies</a>
+                    <a href="/about-ads" class="footer-bottom-link">About Ads</a>
+                    <a href="/accessibility" class="footer-bottom-link">Accessibility</a>
+                </div>
+                <div class="footer-bottom-copyright">
+                    © <%= new Date().getFullYear() %> Spotify AB
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <%- include('partials/right-rail') %>
+    <%- include('partials/player') %>
+</div>
+
+<%- include('partials/modals') %>
+<%- include('partials/scripts') %>
+

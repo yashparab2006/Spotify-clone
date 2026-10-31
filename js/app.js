@@ -33,6 +33,54 @@ function runApp() {
     let playlistIdCounter = 1;
     let viewingPlaylistId = null;
 
+    // Load persisted state from localStorage for multi-page continuity
+    try {
+        const savedTrack = localStorage.getItem("spotify_currentTrack");
+        if (savedTrack !== null) currentTrackIndex = parseInt(savedTrack, 10) || 0;
+        const savedLikes = localStorage.getItem("spotify_likedSongs");
+        if (savedLikes) likedSongs = new Set(JSON.parse(savedLikes));
+        const savedPlaylists = localStorage.getItem("spotify_userPlaylists");
+        if (savedPlaylists) {
+            userPlaylists = JSON.parse(savedPlaylists);
+            if (userPlaylists.length > 0) {
+                playlistIdCounter = Math.max(...userPlaylists.map(p => p.id)) + 1;
+            }
+        }
+        const savedVol = localStorage.getItem("spotify_volume");
+        if (savedVol !== null) volume = parseFloat(savedVol) || 0.75;
+    } catch (e) {}
+
+    // Async sync with Node.js/Express Backend if online
+    if (typeof spotifyApi !== "undefined") {
+        spotifyApi.checkHealth().then(isOnline => {
+            if (isOnline) {
+                spotifyApi.getLikes().then(res => {
+                    if (res && res.data && Array.isArray(res.data.likes)) {
+                        res.data.likes.forEach(id => likedSongs.add(id));
+                        if (typeof updateLikeIcon === "function") updateLikeIcon();
+                    }
+                }).catch(() => {});
+                spotifyApi.getPlaylists().then(res => {
+                    if (res && res.data && Array.isArray(res.data.playlists) && res.data.playlists.length > 0) {
+                        const existingNames = new Set(userPlaylists.map(p => p.name));
+                        res.data.playlists.forEach(pl => {
+                            if (!existingNames.has(pl.name)) {
+                                userPlaylists.push({
+                                    id: pl.id,
+                                    name: pl.name,
+                                    desc: pl.description || "",
+                                    songs: pl.tracks || []
+                                });
+                            }
+                        });
+                        if (typeof renderSidebarPlaylists === "function") renderSidebarPlaylists();
+                        if (profileModule && typeof profileModule.updatePlaylists === "function") profileModule.updatePlaylists(userPlaylists);
+                    }
+                }).catch(() => {});
+            }
+        }).catch(() => {});
+    }
+
     // =========================================================================
     // AUDIO ENGINE (Web Audio API)
     // =========================================================================
@@ -167,33 +215,90 @@ function runApp() {
     }
 
     // =========================================================================
-    // ROUTER - Show/hide pages
+    // ROUTER - Show/hide pages or navigate between separate files
     // =========================================================================
     function navigate(page, pushHistory = true) {
-        $$(".page").forEach(p => p.style.display = "none");
-        const el = $("page" + page.charAt(0).toUpperCase() + page.slice(1));
-        if (el) el.style.display = "block";
-
-        // Search bar visibility
-        searchBar.style.display = page === "search" ? "flex" : "none";
-
-        // Update sidebar active state
-        $$(".nav-option").forEach(n => n.classList.remove("active-nav"));
-        if (page === "home") $("navHome").classList.add("active-nav");
-        else if (page === "search") $("navSearch").classList.add("active-nav");
-        else if (page === "library") $("navLibrary").classList.add("active-nav");
-
-        currentPage = page;
-        if (pushHistory) {
-            pageHistory.splice(historyIndex + 1);
-            pageHistory.push(page);
-            historyIndex = pageHistory.length - 1;
+        if (page && page.startsWith("info:")) {
+            const cleanName = page.split(":")[1];
+            openFooterPage(cleanName, pushHistory);
+            return;
         }
-        updateNavButtons();
-        mainContent.scrollTop = 0;
 
-        if (page === "music" && musicModule && musicModule.resizeVisualizer) {
-            setTimeout(() => musicModule.resizeVisualizer(), 40);
+        const targetId = "page" + page.charAt(0).toUpperCase() + page.slice(1);
+        const el = $(targetId);
+
+        if (el) {
+            $$(".page").forEach(p => p.style.display = "none");
+            el.style.display = "block";
+
+            // Clear any active footer links when navigating to core pages
+            $$(".footer-link").forEach(l => l.classList.remove("active-footer-link"));
+
+            // Search bar visibility
+            if (searchBar) searchBar.style.display = page === "search" ? "flex" : "none";
+
+            // Update sidebar active state
+            $$(".nav-option").forEach(n => n.classList.remove("active-nav"));
+            if (page === "home" && $("navHome")) $("navHome").classList.add("active-nav");
+            else if (page === "search" && $("navSearch")) $("navSearch").classList.add("active-nav");
+            else if (page === "library" && $("navLibrary")) $("navLibrary").classList.add("active-nav");
+
+            currentPage = page;
+            if (pushHistory) {
+                pageHistory.splice(historyIndex + 1);
+                pageHistory.push(page);
+                historyIndex = pageHistory.length - 1;
+            }
+            updateNavButtons();
+            mainContent.scrollTop = 0;
+
+            if (page === "music" && musicModule && musicModule.resizeVisualizer) {
+                setTimeout(() => musicModule.resizeVisualizer(), 40);
+            }
+        } else {
+            // Multi-page navigation fallback to separated screen HTML files
+            const pageFileMap = {
+                home: "index.html",
+                search: "search.html",
+                library: "library.html",
+                createPlaylist: "create-playlist.html",
+                podcasts: "podcasts.html",
+                premium: "premium.html",
+                profile: "profile.html",
+                music: "music.html",
+                auth: "auth.html",
+                about: "about.html",
+                jobs: "jobs.html",
+                forTheRecord: "for-the-record.html",
+                forArtists: "for-artists.html",
+                forCreators: "for-creators.html",
+                forAuthors: "for-authors.html",
+                developers: "developers.html",
+                advertising: "advertising.html",
+                investors: "investors.html",
+                vendors: "vendors.html",
+                support: "support.html",
+                freeMobileApp: "free-mobile-app.html",
+                popularByCountry: "popular-by-country.html",
+                topSongLyrics: "top-song-lyrics.html",
+                importYourMusic: "import-your-music.html",
+                premiumStandard: "premium-standard.html",
+                premiumPlatinum: "premium-platinum.html",
+                premiumStudent: "premium-student.html",
+                spotifyFree: "spotify-free.html",
+                legal: "legal.html",
+                "safety-privacy-center": "safety-privacy-center.html",
+                safetyPrivacyCenter: "safety-privacy-center.html",
+                "privacy-policy": "privacy-policy.html",
+                privacyPolicy: "privacy-policy.html",
+                cookies: "cookies.html",
+                "about-ads": "about-ads.html",
+                aboutAds: "about-ads.html",
+                accessibility: "accessibility.html"
+            };
+            if (pageFileMap[page]) {
+                window.location.href = pageFileMap[page];
+            }
         }
     }
 
@@ -235,6 +340,323 @@ function runApp() {
             toast("Downloading Spotify for Desktop...", "fa-circle-down");
         });
     }
+
+    // =========================================================================
+    // FOOTER PAGES NAVIGATION (JS & CSS DYNAMIC LOADER + STANDALONE COMPATIBILITY)
+    // =========================================================================
+    function openFooterPage(filename, pushHistory = true) {
+        if (!filename) return;
+        const cleanName = filename.split("/").pop().toLowerCase();
+
+        // Persist audio state before page navigation
+        try {
+            localStorage.setItem("spotify_currentTrack", currentTrackIndex);
+            localStorage.setItem("spotify_currentTime", currentTime);
+            localStorage.setItem("spotify_volume", volume);
+            localStorage.setItem("spotify_isPlaying", isPlaying ? "true" : "false");
+        } catch (e) {}
+
+        const pageInfoContainer = $("pageInfo");
+        // If in-page container exists (e.g. index.html) and data is loaded, render dynamically without audio interruption
+        if (pageInfoContainer && typeof FOOTER_PAGES_DATA !== "undefined") {
+            const pageData = FOOTER_PAGES_DATA.find(p => p.filename.toLowerCase() === cleanName);
+            if (pageData) {
+                pageInfoContainer.innerHTML = `
+                    <div class="info-page-container">
+                        <div class="info-hero ${pageData.heroClass}">
+                            <button class="info-back-link" id="inPageBackBtn" type="button"><i class="fa-solid fa-arrow-left"></i> Back to Home</button>
+                            <span class="info-badge">${pageData.badge}</span>
+                            <h1 class="info-title">${pageData.heroTitle}</h1>
+                            <p class="info-sub">${pageData.heroSub}</p>
+                            <div class="info-actions">
+                                ${pageData.actions}
+                            </div>
+                        </div>
+                        ${pageData.content}
+                    </div>
+                `;
+
+                // Wire up back button to return to home
+                const inPageBackBtn = $("inPageBackBtn");
+                if (inPageBackBtn) {
+                    inPageBackBtn.addEventListener("click", () => navigate("home"));
+                }
+
+                // Show pageInfo, hide other pages
+                $$(".page").forEach(p => p.style.display = "none");
+                pageInfoContainer.style.display = "block";
+                if (searchBar) searchBar.style.display = "none";
+                $$(".nav-option").forEach(n => n.classList.remove("active-nav"));
+
+                // Highlight active link in the footer and sidebar
+                $$(".footer-link, .sidebar-legal-link").forEach(l => {
+                    const lHref = (l.getAttribute("href") || "").split("/").pop().toLowerCase();
+                    l.classList.toggle("active-footer-link", lHref === cleanName);
+                });
+
+                currentPage = "info";
+                if (pushHistory) {
+                    pageHistory.splice(historyIndex + 1);
+                    pageHistory.push("info:" + cleanName);
+                    historyIndex = pageHistory.length - 1;
+                }
+                updateNavButtons();
+                mainContent.scrollTop = 0;
+                return;
+            }
+        }
+
+        // Standalone navigation fallback: open dedicated HTML file
+        window.location.href = cleanName;
+    }
+
+    // Expose globally for button clicks
+    window.openFooterPage = openFooterPage;
+
+    // Attach click listeners to all footer and sidebar legal links across the document
+    $$(".footer-link, .sidebar-legal-link").forEach(link => {
+        link.addEventListener("click", (e) => {
+            const href = link.getAttribute("href");
+            if (href && href !== "#" && !href.startsWith("javascript:")) {
+                e.preventDefault();
+                openFooterPage(href);
+            }
+        });
+    });
+
+    // =========================================================================
+    // SIDEBAR LANGUAGE SELECTOR MODAL
+    // =========================================================================
+    const sidebarLangBtn = $("sidebarLangBtn");
+    const langModalOverlay = $("langModalOverlay");
+    const closeLangModalBtn = $("closeLangModalBtn");
+    const sidebarLangLabel = $("sidebarLangLabel");
+
+    // Load saved language preference
+    try {
+        const savedLang = localStorage.getItem("spotify_language");
+        if (savedLang && sidebarLangLabel) {
+            sidebarLangLabel.textContent = savedLang;
+            $$(".lang-item").forEach(item => {
+                item.classList.toggle("active-lang", item.dataset.lang === savedLang);
+            });
+        }
+    } catch (e) {}
+
+    if (sidebarLangBtn && langModalOverlay) {
+        sidebarLangBtn.addEventListener("click", () => {
+            langModalOverlay.style.display = "flex";
+        });
+    }
+
+    if (closeLangModalBtn && langModalOverlay) {
+        closeLangModalBtn.addEventListener("click", () => {
+            langModalOverlay.style.display = "none";
+        });
+    }
+
+    if (langModalOverlay) {
+        langModalOverlay.addEventListener("click", (e) => {
+            if (e.target === langModalOverlay) {
+                langModalOverlay.style.display = "none";
+            }
+        });
+    }
+
+    $$(".lang-item").forEach(item => {
+        item.addEventListener("click", () => {
+            const selectedLang = item.dataset.lang;
+            if (selectedLang) {
+                if (sidebarLangLabel) sidebarLangLabel.textContent = selectedLang;
+                $$(".lang-item").forEach(btn => btn.classList.remove("active-lang"));
+                item.classList.add("active-lang");
+                try {
+                    localStorage.setItem("spotify_language", selectedLang);
+                } catch (e) {}
+                if (langModalOverlay) langModalOverlay.style.display = "none";
+                toast(`Language updated to ${selectedLang}`, "fa-globe");
+            }
+        });
+    });
+
+    // =========================================================================
+    // RIGHT SLIDING SIDEBAR (COLLAPSED RAIL & EXPANDED PANEL - MATCHING SCREENSHOTS)
+    // =========================================================================
+    const rightSidebar = $("rightSidebar");
+    const rightSidebarRail = $("rightSidebarRail");
+    const railExpandBtn = $("railExpandBtn");
+    const rightSidebarSlideSash = $("rightSidebarSlideSash");
+    const closeRightSidebarBtn = $("closeRightSidebarBtn");
+    const rightSidebarSearchBtn = $("rightSidebarSearchBtn");
+    const rightSidebarEmpty = $("rightSidebarEmpty");
+    const rightSidebarContent = $("rightSidebarContent");
+    const rightSidebarCover = $("rightSidebarCover");
+    const rightSidebarTrackTitle = $("rightSidebarTrackTitle");
+    const rightSidebarTrackArtist = $("rightSidebarTrackArtist");
+    const rightSidebarArtistImg = $("rightSidebarArtistImg");
+    const rightSidebarArtistName = $("rightSidebarArtistName");
+    const rightSidebarNextImg = $("rightSidebarNextImg");
+    const rightSidebarNextName = $("rightSidebarNextName");
+    const rightSidebarNextArtist = $("rightSidebarNextArtist");
+    const rightSidebarLikeBtn = $("rightSidebarLikeBtn");
+    const rightSidebarFollowBtn = $("rightSidebarFollowBtn");
+    const rightSidebarOpenQueueBtn = $("rightSidebarOpenQueueBtn");
+
+    let isRightSidebarOpen = false; // Default to sleek collapsed rail matching screenshot
+    try {
+        const savedSidebar = localStorage.getItem("spotify_rightSidebarOpen");
+        if (savedSidebar !== null) isRightSidebarOpen = savedSidebar === "true";
+    } catch (e) {}
+
+    function setRightSidebarState(open) {
+        isRightSidebarOpen = open;
+        if (rightSidebar) {
+            rightSidebar.classList.toggle("collapsed", !open);
+            rightSidebar.style.width = ""; // clear inline dragging width
+        }
+        try {
+            localStorage.setItem("spotify_rightSidebarOpen", open ? "true" : "false");
+        } catch (e) {}
+    }
+
+    // Expand when clicking the collapsed rail or chevron button (Screenshot 2 -> Screenshot 1)
+    if (railExpandBtn) {
+        railExpandBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setRightSidebarState(true);
+        });
+    }
+    if (rightSidebarRail) {
+        rightSidebarRail.addEventListener("click", () => setRightSidebarState(true));
+    }
+
+    // Collapse back to sleek rail (Screenshot 1 -> Screenshot 2)
+    if (closeRightSidebarBtn) {
+        closeRightSidebarBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setRightSidebarState(false);
+        });
+    }
+
+    // Drag-to-Slide interactive gesture mechanics
+    let isDraggingSlide = false;
+
+    function startSlideDrag(e) {
+        isDraggingSlide = true;
+        if (rightSidebar) {
+            rightSidebar.classList.remove("collapsed");
+            rightSidebar.classList.add("no-transition", "dragging");
+        }
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+
+        window.addEventListener("mousemove", onSlideDragMove);
+        window.addEventListener("mouseup", endSlideDrag);
+        window.addEventListener("touchmove", onSlideDragMove);
+        window.addEventListener("touchend", endSlideDrag);
+    }
+
+    function onSlideDragMove(e) {
+        if (!isDraggingSlide || !rightSidebar) return;
+        const currentX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+        const windowWidth = window.innerWidth;
+        const newWidth = Math.max(48, Math.min(520, windowWidth - currentX - 8));
+        rightSidebar.style.width = newWidth + "px";
+    }
+
+    function endSlideDrag(e) {
+        if (!isDraggingSlide) return;
+        isDraggingSlide = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+
+        window.removeEventListener("mousemove", onSlideDragMove);
+        window.removeEventListener("mouseup", endSlideDrag);
+        window.removeEventListener("touchmove", onSlideDragMove);
+        window.removeEventListener("touchend", endSlideDrag);
+
+        if (rightSidebar) {
+            rightSidebar.classList.remove("no-transition", "dragging");
+            const finalWidth = rightSidebar.offsetWidth;
+            if (finalWidth >= 140) {
+                setRightSidebarState(true);
+            } else {
+                setRightSidebarState(false);
+            }
+        }
+    }
+
+    // Drag from collapsed rail or from left sash
+    if (rightSidebarRail) {
+        rightSidebarRail.addEventListener("mousedown", startSlideDrag);
+        rightSidebarRail.addEventListener("touchstart", startSlideDrag, { passive: true });
+    }
+
+    if (rightSidebarSlideSash) {
+        rightSidebarSlideSash.addEventListener("mousedown", startSlideDrag);
+        rightSidebarSlideSash.addEventListener("touchstart", startSlideDrag, { passive: true });
+    }
+
+    if (rightSidebarSearchBtn) {
+        rightSidebarSearchBtn.addEventListener("click", () => {
+            navigate("search");
+            setTimeout(() => {
+                const sInput = $("searchInput");
+                if (sInput) sInput.focus();
+            }, 60);
+        });
+    }
+
+    if (rightSidebarOpenQueueBtn) {
+        rightSidebarOpenQueueBtn.addEventListener("click", () => {
+            navigate("music");
+            toast("Now viewing full music & queue", "fa-bars-staggered");
+        });
+    }
+
+    if (rightSidebarLikeBtn) {
+        rightSidebarLikeBtn.addEventListener("click", () => toggleLike());
+    }
+
+    if (rightSidebarFollowBtn) {
+        rightSidebarFollowBtn.addEventListener("click", () => {
+            const isFollowing = rightSidebarFollowBtn.classList.contains("following");
+            rightSidebarFollowBtn.classList.toggle("following", !isFollowing);
+            rightSidebarFollowBtn.textContent = !isFollowing ? "Following" : "Follow";
+            toast(!isFollowing ? "Added artist to your Library" : "Removed artist from Library", "fa-user-check");
+        });
+    }
+
+    function updateRightSidebar(track, nextTrack) {
+        if (!track) {
+            if (rightSidebarEmpty) rightSidebarEmpty.style.display = "flex";
+            if (rightSidebarContent) rightSidebarContent.style.display = "none";
+            return;
+        }
+
+        // Show active content if a track is playing
+        if (rightSidebarEmpty) rightSidebarEmpty.style.display = "none";
+        if (rightSidebarContent) rightSidebarContent.style.display = "flex";
+
+        if (rightSidebarCover) rightSidebarCover.src = track.img || "../assesst/card1img.jpeg";
+        if (rightSidebarTrackTitle) rightSidebarTrackTitle.textContent = track.title || "Unknown Track";
+        if (rightSidebarTrackArtist) rightSidebarTrackArtist.textContent = track.artist || "Unknown Artist";
+        if (rightSidebarArtistImg) rightSidebarArtistImg.src = track.img || "../assesst/card1img.jpeg";
+        if (rightSidebarArtistName) rightSidebarArtistName.textContent = track.artist || "Artist";
+
+        if (rightSidebarLikeBtn) {
+            const isLiked = likedSongs.has(track.id);
+            rightSidebarLikeBtn.className = isLiked ? "fa-solid fa-heart now-playing-like-btn liked" : "fa-regular fa-heart now-playing-like-btn";
+        }
+
+        if (nextTrack) {
+            if (rightSidebarNextImg) rightSidebarNextImg.src = nextTrack.img || "../assesst/card2img.jpeg";
+            if (rightSidebarNextName) rightSidebarNextName.textContent = nextTrack.title || "";
+            if (rightSidebarNextArtist) rightSidebarNextArtist.textContent = nextTrack.artist || "";
+        }
+    }
+
+    setRightSidebarState(isRightSidebarOpen);
 
     // Top Navigation Auth Buttons (Sign up / Log in)
     const navSignUpBtn = $("navSignUpBtn");
@@ -677,6 +1099,10 @@ function runApp() {
             songs: [...pendingPlaylistSongs]
         };
         userPlaylists.push(pl);
+        try { localStorage.setItem("spotify_userPlaylists", JSON.stringify(userPlaylists)); } catch (e) {}
+        if (typeof spotifyApi !== "undefined") {
+            spotifyApi.createPlaylist(name, desc).catch(() => {});
+        }
         pendingPlaylistSongs = [];
         renderSidebarPlaylists();
         if (profileModule) profileModule.updatePlaylists(userPlaylists);
@@ -841,6 +1267,7 @@ function runApp() {
     // =========================================================================
     function loadTrack(idx, autoPlay = true) {
         currentTrackIndex = (idx + playlist.length) % playlist.length;
+        try { localStorage.setItem("spotify_currentTrack", currentTrackIndex); } catch (e) {}
         const t = playlist[currentTrackIndex];
         albumArt.src = t.img;
         trackTitle.textContent = t.title;
@@ -853,6 +1280,7 @@ function runApp() {
         chordIdx = 0;
         updateLikeIcon();
         highlightActiveCard();
+        updateRightSidebar(t, playlist[(currentTrackIndex + 1) % playlist.length]);
 
         // Render Music Page with current track details
         musicModule.render(
@@ -949,6 +1377,9 @@ function runApp() {
         const t = playlist[currentTrackIndex];
         const isLiked = likedSongs.has(t.id);
         likeBtn.className = isLiked ? "fa-solid fa-heart like-icon liked" : "fa-regular fa-heart like-icon";
+        if ($("rightSidebarLikeBtn")) {
+            $("rightSidebarLikeBtn").className = isLiked ? "fa-solid fa-heart now-playing-like-btn liked" : "fa-regular fa-heart now-playing-like-btn";
+        }
         musicModule.updateLikeState(isLiked);
     }
 
@@ -985,7 +1416,11 @@ function runApp() {
             likedSongs.add(t.id);
             toast("Added to Liked Songs", "fa-heart");
         }
+        try { localStorage.setItem("spotify_likedSongs", JSON.stringify([...likedSongs])); } catch (e) {}
         updateLikeIcon();
+        if (typeof spotifyApi !== "undefined") {
+            spotifyApi.toggleLike(t.id).catch(() => {});
+        }
     });
 
     // Progress bar
@@ -1001,6 +1436,7 @@ function runApp() {
     volumeBar.addEventListener("input", () => {
         volume = parseFloat(volumeBar.value) / 100;
         isMuted = volume === 0;
+        try { localStorage.setItem("spotify_volume", volume); } catch (e) {}
         if (audioCtx && masterGain) masterGain.gain.setValueAtTime(volume * 0.3, audioCtx.currentTime);
         updateVolumeUI();
     });
@@ -1115,8 +1551,38 @@ function runApp() {
         toast
     });
 
-    // Start on home
-    navigate("home", false);
+    // Start on appropriate page based on file name or data-page attribute
+    const pageUrlMap = {
+        "index.html": "home",
+        "search.html": "search",
+        "library.html": "library",
+        "create-playlist.html": "createPlaylist",
+        "podcasts.html": "podcasts",
+        "premium.html": "premium",
+        "profile.html": "profile",
+        "music.html": "music",
+        "auth.html": "auth"
+    };
+    const currentFileName = (window.location.pathname.split("/").pop() || "index.html").toLowerCase();
+    const dataPage = (document.body.dataset.page || "").toLowerCase();
+
+    // Highlight active link if on a standalone footer or sidebar page
+    if (currentFileName && currentFileName !== "index.html") {
+        $$(".footer-link, .sidebar-legal-link").forEach(l => {
+            const lHref = (l.getAttribute("href") || "").split("/").pop().toLowerCase();
+            l.classList.toggle("active-footer-link", lHref === currentFileName);
+        });
+    }
+
+    const initialPage = dataPage || pageUrlMap[currentFileName] || "home";
+    const targetElement = $(`page${initialPage.charAt(0).toUpperCase() + initialPage.slice(1)}`);
+    if (pageUrlMap[currentFileName] || targetElement) {
+        navigate(initialPage, false);
+    } else {
+        // Standalone footer page (about, jobs, etc.)
+        currentPage = initialPage;
+        $$(".nav-option").forEach(n => n.classList.remove("active-nav"));
+    }
 }
 
 if (document.readyState === "loading") {

@@ -1,0 +1,100 @@
+<%- include('partials/head', { pageTitle: 'Spotify - Get Premium' }) %>
+
+<div class="main">
+    <%- include('partials/sidebar', { activePage: 'premium', playlists: typeof playlists !== 'undefined' ? playlists : [] }) %>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <div class="main-content" id="mainContent">
+        <%- include('partials/topbar', { activePage: 'premium', user: typeof user !== 'undefined' ? user : null }) %>
+
+        <div class="premium-page-container" style="padding: 2rem 0; max-width: 960px; margin: 0 auto;">
+            <!-- Hero -->
+            <div style="text-align: center; margin-bottom: 3rem;">
+                <h1 style="font-size: 2.8rem; font-weight: 900; color: #fff; margin-bottom: 0.75rem;">Get Premium free for 1 month</h1>
+                <p style="font-size: 1.15rem; color: #b3b3b3; margin-bottom: 1.5rem;">Just $10.99/month after. Cancel anytime.</p>
+                <button class="badge" style="background:#fff; color:#000; font-size:1rem; padding:0.8rem 2.2rem; font-weight:700;">Get Started</button>
+            </div>
+
+            <!-- Benefit Icons -->
+            <h2 style="text-align: center; margin-bottom: 2rem;">Why go Premium?</h2>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 3.5rem;">
+                <div style="background:#181818; padding: 1.5rem; border-radius: 8px; text-align:center;">
+                    <i class="fa-solid fa-ban" style="font-size: 2.5rem; color: #1ed760; margin-bottom: 1rem;"></i>
+                    <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem;">Ad-free listening</h3>
+                    <p style="color:#b3b3b3; font-size: 0.85rem;">Enjoy uninterrupted music.</p>
+                </div>
+                <div style="background:#181818; padding: 1.5rem; border-radius: 8px; text-align:center;">
+                    <i class="fa-solid fa-download" style="font-size: 2.5rem; color: #1ed760; margin-bottom: 1rem;"></i>
+                    <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem;">Offline playback</h3>
+                    <p style="color:#b3b3b3; font-size: 0.85rem;">Save your data, play offline.</p>
+                </div>
+                <div style="background:#181818; padding: 1.5rem; border-radius: 8px; text-align:center;">
+                    <i class="fa-solid fa-shuffle" style="font-size: 2.5rem; color: #1ed760; margin-bottom: 1rem;"></i>
+                    <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem;">Play in any order</h3>
+                    <p style="color:#b3b3b3; font-size: 0.85rem;">Unlimited skips & control.</p>
+                </div>
+                <div style="background:#181818; padding: 1.5rem; border-radius: 8px; text-align:center;">
+                    <i class="fa-solid fa-headphones-simple" style="font-size: 2.5rem; color: #1ed760; margin-bottom: 1rem;"></i>
+                    <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem;">High audio quality</h3>
+                    <p style="color:#b3b3b3; font-size: 0.85rem;">Feel the 320kbps fidelity.</p>
+                </div>
+            </div>
+
+            <!-- Plans Grid -->
+            <h2 style="margin-bottom: 1.5rem;">Pick your Premium</h2>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem;">
+                <!-- Standard -->
+                <div style="background:#242424; border-radius: 8px; padding: 1.8rem; border-top: 4px solid #1ed760; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div>
+                        <span class="badge" style="margin-bottom: 1rem;">1 month free</span>
+                        <h3 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Standard</h3>
+                        <p style="color:#fff; font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem;">$10.99 / month</p>
+                        <ul style="color:#b3b3b3; font-size: 0.85rem; line-height: 1.8; padding-left: 1.2rem; margin-bottom: 1.5rem;">
+                            <li>1 Premium account</li>
+                            <li>Cancel anytime</li>
+                            <li>15 hours/month of audiobook listening</li>
+                        </ul>
+                    </div>
+                    <button class="badge" style="width:100%; padding:0.75rem; font-size:0.95rem;">Get Standard</button>
+                </div>
+
+                <!-- Platinum -->
+                <div style="background:#242424; border-radius: 8px; padding: 1.8rem; border-top: 4px solid #ffd700; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div>
+                        <span class="badge" style="background:#ffd700; color:#000; margin-bottom: 1rem;">Audiophile Choice</span>
+                        <h3 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Platinum</h3>
+                        <p style="color:#fff; font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem;">$19.99 / month</p>
+                        <ul style="color:#b3b3b3; font-size: 0.85rem; line-height: 1.8; padding-left: 1.2rem; margin-bottom: 1.5rem;">
+                            <li>24-bit Lossless Hi-Fi audio</li>
+                            <li>Spatial Audio with Dolby Atmos</li>
+                            <li>Unlimited Audiobook listening</li>
+                        </ul>
+                    </div>
+                    <button class="badge" style="width:100%; padding:0.75rem; font-size:0.95rem;">Get Platinum</button>
+                </div>
+
+                <!-- Student -->
+                <div style="background:#242424; border-radius: 8px; padding: 1.8rem; border-top: 4px solid #c084fc; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div>
+                        <span class="badge" style="margin-bottom: 1rem;">1 month free</span>
+                        <h3 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Student</h3>
+                        <p style="color:#fff; font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem;">$5.99 / month</p>
+                        <ul style="color:#b3b3b3; font-size: 0.85rem; line-height: 1.8; padding-left: 1.2rem; margin-bottom: 1.5rem;">
+                            <li>1 verified student account</li>
+                            <li>Discount for up to 4 years</li>
+                            <li>Hulu (With Ads) subscription included</li>
+                        </ul>
+                    </div>
+                    <button class="badge" style="width:100%; padding:0.75rem; font-size:0.95rem;">Get Student</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/right-rail') %>
+    <%- include('partials/player') %>
+</div>
+
+<%- include('partials/modals') %>
+<%- include('partials/scripts') %>
+

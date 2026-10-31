@@ -1,0 +1,32 @@
+        <!-- ========== MUSIC PLAYER BAR ========== -->
+        <div class="music-player">
+            <div class="album" id="playerAlbumSection" title="Click to view now playing screen" style="cursor:pointer;">
+                <img src="/assesst/card1img.jpeg" class="album-img" id="albumArt" alt="Album">
+                <div class="album-info">
+                    <span class="album-title" id="trackTitle">Top 50 - Global</span>
+                    <span class="album-artist" id="trackArtist">Spotify Charts</span>
+                </div>
+                <i class="fa-regular fa-heart like-icon" id="likeBtn" title="Save to Your Library"></i>
+            </div>
+            <div class="player">
+                <div class="player-controls">
+                    <img src="/assesst/player_icon1.png" class="player-control-icon" id="shuffleBtn" title="Shuffle">
+                    <img src="/assesst/player_icon2.png" class="player-control-icon" id="prevBtn" title="Previous">
+                    <button class="main-play-btn" id="playPauseBtn" title="Play">
+                        <i class="fa-solid fa-play" id="playPauseIcon"></i>
+                    </button>
+                    <img src="/assesst/player_icon4.png" class="player-control-icon" id="nextBtn" title="Next">
+                    <img src="/assesst/player_icon5.png" class="player-control-icon" id="repeatBtn" title="Repeat">
+                </div>
+                <div class="playback-bar">
+                    <span class="curr-time" id="currTime">0:00</span>
+                    <input type="range" min="0" max="100" value="0" class="progress-bar" id="progressBar" step="0.1">
+                    <span class="tot-time" id="totTime">3:33</span>
+                </div>
+            </div>
+            <div class="controls">
+                <i class="fa-solid fa-volume-high volume-icon" id="volumeIcon" title="Mute"></i>
+                <input type="range" min="0" max="100" value="75" class="volume-bar" id="volumeBar">
+            </div>
+        </div>
+

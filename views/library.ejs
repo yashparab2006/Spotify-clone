@@ -1,0 +1,55 @@
+<%- include('partials/head', { pageTitle: 'Spotify - Your Library' }) %>
+
+<div class="main">
+    <%- include('partials/sidebar', { activePage: 'library', playlists: typeof playlists !== 'undefined' ? playlists : [] }) %>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <div class="main-content" id="mainContent">
+        <%- include('partials/topbar', { activePage: 'library', user: typeof user !== 'undefined' ? user : null }) %>
+
+        <div class="library-page-container" style="padding: 1.5rem 0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem;">
+                <h1 style="font-size: 1.8rem; font-weight: 800; color: #fff;">Your Library</h1>
+                <button class="badge" id="createPlaylistBtnPage"><i class="fa-solid fa-plus"></i> Create Playlist</button>
+            </div>
+
+            <!-- Liked Songs Banner -->
+            <div class="liked-songs-banner" id="likedSongsBanner" style="display:flex; align-items:flex-end; gap: 1.5rem; padding: 2rem; background: linear-gradient(135deg, #450af5, #8e8ee5); border-radius: 8px; margin-bottom: 2rem; cursor: pointer;">
+                <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #33006F, #FFFFFF); border-radius: 4px; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+                    <i class="fa-solid fa-heart" style="font-size: 3.5rem; color: #fff;"></i>
+                </div>
+                <div>
+                    <span style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Playlist</span>
+                    <h2 style="font-size: 2.5rem; font-weight: 900; margin: 0.2rem 0;">Liked Songs</h2>
+                    <span id="likedSongsCount" style="color: #e6e6e6; font-size: 0.9rem;"><%= typeof likes !== 'undefined' ? likes.length : 3 %> songs</span>
+                </div>
+            </div>
+
+            <!-- Playlists Section -->
+            <h2>Your Playlists</h2>
+            <div class="cards-container" id="libraryPlaylistsGrid">
+                <% if (typeof playlists !== 'undefined' && playlists.length > 0) { %>
+                    <% playlists.forEach(function(pl) { %>
+                        <div class="card playlist-card" data-playlist-id="<%= pl.id %>">
+                            <div class="card-img-wrapper">
+                                <img src="<%= pl.cover || '/assesst/card1img.jpeg' %>" class="card-img" alt="<%= pl.name %>">
+                                <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                            </div>
+                            <p class="card-title"><%= pl.name %></p>
+                            <p class="card-info"><%= pl.desc || 'By ' + (typeof user !== 'undefined' && user ? user.name : 'You') %></p>
+                        </div>
+                    <% }); %>
+                <% } else { %>
+                    <p style="color: #a7a7a7; padding: 1rem 0;">No custom playlists created yet. Click "Create Playlist" to start your collection!</p>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/right-rail') %>
+    <%- include('partials/player') %>
+</div>
+
+<%- include('partials/modals') %>
+<%- include('partials/scripts') %>
+

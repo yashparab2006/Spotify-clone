@@ -1,0 +1,82 @@
+        <!-- ========== RIGHT SIDEBAR (Collapsible Rail & Sliding Window) ========== -->
+        <div class="right-sidebar collapsed" id="rightSidebar">
+            <!-- Collapsed Rail Bar -->
+            <div class="right-rail-collapsed" id="rightSidebarRail" title="Now playing view">
+                <button class="rail-expand-btn" id="rightSidebarRailBtn" type="button" aria-label="Expand Now Playing view">
+                    <i class="fa-solid fa-chevron-left rail-expand-chevron"></i>
+                </button>
+                <div class="custom-tooltip">Now playing view</div>
+            </div>
+
+            <!-- Drag Sash Handle -->
+            <div class="right-sidebar-sash" id="rightSidebarSash" title="Drag to resize / pull to open">
+                <div class="sash-grip-line"></div>
+            </div>
+
+            <!-- Expanded Window Container -->
+            <div class="right-sidebar-expanded-window" id="rightSidebarExpandedWindow">
+                <div class="right-sidebar-top-bar">
+                    <button class="right-sidebar-collapse-btn" id="rightSidebarCollapseBtn" type="button" title="Close Now playing view" aria-label="Collapse Now Playing view">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <span class="right-sidebar-window-title" id="rightSidebarHeaderTitle">Find something to play</span>
+                    <button class="right-sidebar-menu-btn" type="button" title="More options" aria-label="More options">
+                        <i class="fa-solid fa-ellipsis"></i>
+                    </button>
+                </div>
+
+                <!-- Empty / Standby State -->
+                <div class="right-sidebar-empty-state" id="rightSidebarEmptyState">
+                    <h2 class="empty-state-title">Find something to play</h2>
+                    <a href="/search" class="badge empty-state-search-btn" id="rightSidebarEmptySearchBtn" style="text-decoration:none;">Search</a>
+                </div>
+
+                <!-- Active Now Playing Content -->
+                <div class="right-sidebar-playing-content" id="rightSidebarPlayingContent" style="display:none;">
+                    <div class="right-sidebar-art-box">
+                        <img src="/assesst/card1img.jpeg" id="rightSidebarArt" alt="Track Art" class="right-sidebar-art">
+                    </div>
+                    <div class="right-sidebar-track-meta">
+                        <div class="right-sidebar-track-text">
+                            <h3 class="right-sidebar-track-name" id="rightSidebarTrackName">Top 50 - Global</h3>
+                            <p class="right-sidebar-track-artist" id="rightSidebarTrackArtist">Spotify Charts</p>
+                        </div>
+                        <button class="right-sidebar-action-btn" type="button" title="Save to Your Library">
+                            <i class="fa-regular fa-heart now-playing-like-btn" id="rightSidebarLikeBtn"></i>
+                        </button>
+                    </div>
+
+                    <!-- About the artist card -->
+                    <div class="about-artist-card">
+                        <div class="about-artist-header">
+                            <img src="/assesst/card1img.jpeg" id="rightSidebarArtistImg" alt="Artist">
+                            <div class="about-artist-info">
+                                <span class="about-artist-badge">Verified Artist</span>
+                                <h4 id="rightSidebarArtistName">Spotify Charts</h4>
+                            </div>
+                        </div>
+                        <p class="about-artist-bio" id="rightSidebarArtistBio">Your daily update of the most played tracks right now.</p>
+                        <div class="about-artist-footer">
+                            <span id="rightSidebarMonthlyListeners">626,892,110 monthly listeners</span>
+                            <button class="badge dark-badge" id="rightSidebarFollowBtn">Follow</button>
+                        </div>
+                    </div>
+
+                    <!-- Next in Queue Preview -->
+                    <div class="right-sidebar-queue-box">
+                        <div class="queue-box-header">
+                            <span class="queue-title">Next in queue</span>
+                            <button class="queue-open-link" id="rightSidebarOpenQueueBtn">Open queue</button>
+                        </div>
+                        <div class="queue-next-track" id="rightSidebarNextTrack">
+                            <img src="/assesst/card2img.jpeg" id="rightSidebarNextImg" alt="Next">
+                            <div class="queue-next-meta">
+                                <span class="queue-next-name" id="rightSidebarNextName">Daily Mix 1</span>
+                                <span class="queue-next-artist" id="rightSidebarNextArtist">Spotify</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+

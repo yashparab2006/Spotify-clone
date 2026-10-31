@@ -1,0 +1,61 @@
+<%- include('partials/head', { pageTitle: pageTitle }) %>
+
+<div class="main">
+    <%- include('partials/sidebar', { activePage: 'footer', playlists: typeof playlists !== 'undefined' ? playlists : [] }) %>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <div class="main-content" id="mainContent">
+        <%- include('partials/topbar', { activePage: 'footer', user: typeof user !== 'undefined' ? user : null }) %>
+
+        <div class="footer-screen-container" style="padding: 2rem 0; max-width: 900px; margin: 0 auto;">
+            <!-- Breadcrumb Navigation -->
+            <div style="font-size: 0.85rem; color: #b3b3b3; margin-bottom: 1.5rem;">
+                <a href="/" style="color:#b3b3b3; text-decoration:none;">Home</a>
+                <span style="margin: 0 0.5rem;">/</span>
+                <span style="color:#fff;"><%= page.category %></span>
+                <span style="margin: 0 0.5rem;">/</span>
+                <span style="color:#1ed760;"><%= page.title %></span>
+            </div>
+
+            <!-- Hero Banner -->
+            <div style="background: linear-gradient(135deg, #1e3264, #121212); padding: 2.5rem; border-radius: 12px; margin-bottom: 2rem;">
+                <span class="badge" style="background:#1ed760; color:#000; font-weight:700; margin-bottom: 0.75rem;"><%= page.category %></span>
+                <h1 style="font-size: 2.8rem; font-weight: 900; color: #fff; margin: 0.5rem 0 1rem;"><%= page.title %></h1>
+                <p style="font-size: 1.15rem; color: #e0e0e0; max-width: 700px; line-height: 1.6;"><%= page.tagline %></p>
+            </div>
+
+            <!-- Key Highlights / Stat Cards -->
+            <% if (page.highlights && page.highlights.length > 0) { %>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; margin-bottom: 2.5rem;">
+                    <% page.highlights.forEach(function(h) { %>
+                        <div style="background:#181818; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #1ed760;">
+                            <h3 style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 0.4rem;"><%= h.heading %></h3>
+                            <p style="color: #b3b3b3; font-size: 0.88rem; line-height: 1.5;"><%= h.text %></p>
+                        </div>
+                    <% }); %>
+                </div>
+            <% } %>
+
+            <!-- Main Longform Body Content -->
+            <div style="background:#181818; padding: 2.5rem; border-radius: 12px; line-height: 1.8; color: #d1d1d1; font-size: 0.95rem; margin-bottom: 2.5rem;">
+                <% page.paragraphs.forEach(function(para) { %>
+                    <p style="margin-bottom: 1.25rem;"><%= para %></p>
+                <% }); %>
+            </div>
+
+            <!-- FAQs or Call to Action -->
+            <div style="text-align: center; padding: 2rem; background: #242424; border-radius: 12px;">
+                <h2 style="font-size: 1.5rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem;">Need more information?</h2>
+                <p style="color: #b3b3b3; margin-bottom: 1.5rem;">Our customer success, developer relations, and community teams are ready to help.</p>
+                <a href="/footer/support" class="badge" style="background:#1ed760; color:#000; font-weight:700; padding:0.8rem 2rem; text-decoration:none; display:inline-block;">Visit Support Center</a>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/right-rail') %>
+    <%- include('partials/player') %>
+</div>
+
+<%- include('partials/modals') %>
+<%- include('partials/scripts') %>
+

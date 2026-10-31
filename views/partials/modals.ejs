@@ -1,0 +1,94 @@
+    <!-- Edit Profile Modal -->
+    <div class="modal-overlay" id="editProfileModal" style="display:none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Profile details</h3>
+                <button class="modal-close" id="closeProfileModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="edit-profile-body">
+                <div class="avatar-edit-box">
+                    <img src="/assesst/logo.png" id="avatarPreview" alt="Profile avatar">
+                    <div class="avatar-overlay-label"><i class="fa-solid fa-camera"></i> Change</div>
+                </div>
+                <div class="profile-inputs">
+                    <div class="form-group">
+                        <label for="profileNameInput">Name</label>
+                        <input type="text" id="profileNameInput" placeholder="Display name" maxlength="40" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="profileBioInput">Bio</label>
+                        <textarea id="profileBioInput" placeholder="Add an optional bio" rows="3" maxlength="150"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="badge dark-badge" id="cancelProfileBtn">Cancel</button>
+                <button class="badge" id="saveProfileBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Premium Subscribe / Checkout Modal -->
+    <div class="modal-overlay" id="subscribeModal" style="display:none;">
+        <div class="modal-card premium-checkout-card">
+            <div class="modal-header">
+                <h3 id="checkoutPlanTitle">Get Spotify Premium</h3>
+                <button class="modal-close" id="closeCheckoutModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="checkout-body">
+                <div class="checkout-badge-row">
+                    <span class="plan-price-tag" id="checkoutPlanPrice">$10.99 / month</span>
+                    <span class="plan-promo-tag" id="checkoutPromoTag">1 month free trial</span>
+                </div>
+                <p id="checkoutPlanDesc">Ad-free music listening, play offline, on-demand playback.</p>
+                <div class="checkout-payment-box">
+                    <label style="font-size:0.82rem;font-weight:600;color:#b3b3b3;margin-bottom:0.4rem;display:block;">Select Payment Method (Simulated)</label>
+                    <div class="payment-method-options">
+                        <label class="payment-radio selected">
+                            <input type="radio" name="payment" checked>
+                            <i class="fa-brands fa-cc-visa"></i> Visa •••• 4242
+                        </label>
+                        <label class="payment-radio">
+                            <input type="radio" name="payment">
+                            <i class="fa-brands fa-paypal"></i> PayPal
+                        </label>
+                    </div>
+                </div>
+                <div class="checkout-terms">
+                    By confirming, you authorize recurring payments. Cancel anytime in your Account settings.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="badge dark-badge" id="cancelCheckoutBtn">Cancel</button>
+                <button class="badge create-btn" id="confirmSubscribeBtn">Start 1 Month Free</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Language Selector Modal -->
+    <div class="modal-overlay" id="langModalOverlay" style="display:none;">
+        <div class="modal-card lang-modal-card">
+            <div class="modal-header">
+                <h3>Choose a language</h3>
+                <button class="modal-close" id="closeLangModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="checkout-body" style="padding:1.2rem 1.6rem 1.6rem;">
+                <p style="color:#a7a7a7;font-size:0.86rem;margin:0 0 1rem;line-height:1.4;">This updates what you read on Spotify and adjusts region settings.</p>
+                <div class="lang-grid">
+                    <button class="lang-item active-lang" data-lang="English"><strong>English</strong><span>English</span></button>
+                    <button class="lang-item" data-lang="Español"><strong>Español</strong><span>Spanish</span></button>
+                    <button class="lang-item" data-lang="Français"><strong>Français</strong><span>French</span></button>
+                    <button class="lang-item" data-lang="Deutsch"><strong>Deutsch</strong><span>German</span></button>
+                    <button class="lang-item" data-lang="Italiano"><strong>Italiano</strong><span>Italian</span></button>
+                    <button class="lang-item" data-lang="Português"><strong>Português</strong><span>Portuguese (Brazil)</span></button>
+                    <button class="lang-item" data-lang="हिन्दी"><strong>हिन्दी</strong><span>Hindi</span></button>
+                    <button class="lang-item" data-lang="日本語"><strong>日本語</strong><span>Japanese</span></button>
+                    <button class="lang-item" data-lang="한국어"><strong>한국어</strong><span>Korean</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
