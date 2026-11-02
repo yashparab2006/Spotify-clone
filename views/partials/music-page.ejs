@@ -1,0 +1,133 @@
+            <!-- ===== PAGE: MUSIC / NOW PLAYING ===== -->
+            <div class="page" id="pageMusic" style="display:none;">
+                <!-- Navigation Bar on Music Page -->
+                <div class="music-screen-topbar">
+                    <button class="badge dark-badge music-back-btn" id="musicBackBtn">
+                        <i class="fa-solid fa-arrow-left" style="margin-right:6px"></i> Back
+                    </button>
+                    <span class="music-screen-status"><i class="fa-solid fa-compact-disc fa-spin"></i> NOW PLAYING</span>
+                </div>
+
+                <!-- Music Hero Showcase -->
+                <div class="music-hero-showcase" id="musicHeroShowcase">
+                    <div class="music-art-wrapper">
+                        <img src="/assesst/card1img.jpeg" class="music-large-art" id="musicPageArt" alt="Track Artwork" onerror="this.onerror=null;this.src='/assesst/card1img.jpeg';">
+                        <div class="music-art-ambient-glow" id="musicArtGlow"></div>
+                    </div>
+                    <div class="music-hero-details">
+                        <span class="music-type-pill">SONG</span>
+                        <h1 class="music-page-title" id="musicPageTitle">Top 50 - Global</h1>
+                        <div class="music-page-artist-row" id="musicPageArtistRow">
+                            <img src="/assesst/logo.png" class="music-artist-mini-avatar" id="musicPageArtistAvatar" alt="Artist" onerror="this.onerror=null;this.src='/assesst/card1img.jpeg';">
+                            <span class="music-page-artist" id="musicPageArtist">Spotify Charts</span>
+                            <span class="bullet">•</span>
+                            <span id="musicPageAlbum">Global Hits</span>
+                            <span class="bullet">•</span>
+                            <span id="musicPageYear">2024</span>
+                            <span class="bullet">•</span>
+                            <span id="musicPageDuration">3:33</span>
+                        </div>
+                        <div class="music-audio-meta-pills">
+                            <span class="audio-pill"><i class="fa-solid fa-gauge-high"></i> <span id="musicPageBpm">104 BPM</span></span>
+                            <span class="audio-pill"><i class="fa-solid fa-music"></i> <span id="musicPageKey">Key: C Major</span></span>
+                            <span class="audio-pill"><i class="fa-solid fa-wave-square"></i> <span id="musicPageFidelity">320 kbps Master</span></span>
+                        </div>
+                        <!-- Hero Actions -->
+                        <div class="music-hero-actions">
+                            <button class="music-big-play-btn" id="musicPagePlayBtn" title="Play / Pause">
+                                <i class="fa-solid fa-play" id="musicPagePlayIcon"></i>
+                            </button>
+                            <button class="music-icon-action-btn" id="musicPageLikeBtn" title="Save to Your Library">
+                                <i class="fa-regular fa-heart"></i>
+                            </button>
+                            <button class="music-icon-action-btn" id="musicPageAddToPlaylistBtn" title="Add to playlist">
+                                <i class="fa-solid fa-circle-plus"></i>
+                            </button>
+                            <button class="music-icon-action-btn" id="musicPageShareBtn" title="Share track">
+                                <i class="fa-solid fa-share-nodes"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Real-Time Audio Frequency Spectrum Visualizer -->
+                <div class="music-visualizer-container" id="musicVisualizerContainer">
+                    <div class="visualizer-header">
+                        <div class="visualizer-title">
+                            <i class="fa-solid fa-wave-square visualizer-icon" id="visualizerIcon"></i>
+                            <span class="visualizer-title-text">Live Audio Spectrum Visualizer</span>
+                            <span class="visualizer-live-badge"><span class="live-dot"></span> LIVE WEB AUDIO</span>
+                        </div>
+                        <div class="visualizer-controls">
+                            <div class="visualizer-modes">
+                                <button class="visualizer-mode-btn active" data-mode="bars" title="Frequency Bars"><i class="fa-solid fa-chart-simple"></i> Bars</button>
+                                <button class="visualizer-mode-btn" data-mode="wave" title="Oscilloscope Wave"><i class="fa-solid fa-water"></i> Wave</button>
+                                <button class="visualizer-mode-btn" data-mode="radial" title="Radial Pulse"><i class="fa-solid fa-sun"></i> Pulse</button>
+                            </div>
+                            <button class="visualizer-toggle-btn" id="visualizerToggleBtn" title="Toggle Visualizer">
+                                <i class="fa-solid fa-eye-slash" id="visualizerToggleIcon"></i> Hide
+                            </button>
+                        </div>
+                    </div>
+                    <div class="visualizer-canvas-wrapper" id="visualizerCanvasWrapper">
+                        <canvas id="audioVisualizerCanvas" height="180"></canvas>
+                    </div>
+                </div>
+
+                <!-- Interactive Synchronized Lyrics -->
+                <div class="music-content-grid">
+                    <div class="music-lyrics-card">
+                        <div class="lyrics-header">
+                            <h2>Lyrics</h2>
+                            <span class="lyrics-badge"><i class="fa-solid fa-microphone-lines"></i> Interactive Sync</span>
+                        </div>
+                        <div class="lyrics-body" id="musicPageLyrics">
+                            <!-- Populated dynamically by music module -->
+                        </div>
+                    </div>
+
+                    <!-- Artist Biography & Info -->
+                    <div class="music-artist-card">
+                        <div class="about-artist-box">
+                            <div class="about-artist-header-img-wrapper">
+                                <img src="/assesst/card1img.jpeg" id="aboutArtistImg" alt="Artist Header" onerror="this.onerror=null;this.src='/assesst/card1img.jpeg';">
+                                <div class="about-artist-overlay">
+                                    <span class="about-tag">About the artist</span>
+                                    <h3 id="aboutArtistName">Spotify Charts</h3>
+                                    <span class="about-listeners" id="aboutArtistListeners">148,290,118 monthly listeners</span>
+                                    <button class="badge dark-badge follow-artist-btn" id="aboutArtistFollowBtn">Follow</button>
+                                </div>
+                            </div>
+                            <div class="about-artist-bio">
+                                <p id="aboutArtistBio">Your daily countdown of the most played music across every country and continent on Spotify worldwide.</p>
+                            </div>
+                        </div>
+
+                        <!-- Track Credits -->
+                        <div class="track-credits-box">
+                            <h3>Credits</h3>
+                            <div class="credit-row">
+                                <span class="credit-role">Performed by</span>
+                                <span class="credit-name" id="creditArtist">Spotify Charts</span>
+                            </div>
+                            <div class="credit-row">
+                                <span class="credit-role">Written by</span>
+                                <span class="credit-name" id="creditWriters">Global Curators</span>
+                            </div>
+                            <div class="credit-row">
+                                <span class="credit-role">Produced by</span>
+                                <span class="credit-name" id="creditProducers">Spotify Editorial</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recommended Tracks / Next in Queue -->
+                <div class="music-up-next-section">
+                    <h2>Next in Queue</h2>
+                    <div class="up-next-list" id="musicUpNextList">
+                        <!-- Populated dynamically by music module -->
+                    </div>
+                </div>
+            </div>
+

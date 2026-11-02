@@ -2,11 +2,1470 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=html/index.html">
-    <title>Spotify - Opening Web Player...</title>
-    <script>window.location.replace("html/index.html");</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="icon" href="./assesst/logo.png">
+    <title>Spotify - Web Player: Music for everyone</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/style.css">
 </head>
-<body style="background:#000;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
-    <p>Opening Spotify... <a href="html/index.html" style="color:#1ed760;text-decoration:none;">Click here if not redirected</a></p>
+<body>
+    <div class="main">
+        <!-- ========== SIDEBAR ========== -->
+        <div class="sidebar">
+            <div class="nav">
+                <div class="nav-option active-nav" id="navHome">
+                    <i class="fa-solid fa-house"></i>
+                    <a href="#">Home</a>
+                </div>
+                <div class="nav-option" id="navSearch">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <a href="#">Search</a>
+                </div>
+            </div>
+            <div class="library">
+                <div class="options">
+                    <div class="lib-option nav-option" id="navLibrary">
+                        <img src="./assesst/library_icon.png" alt="Library">
+                        <a href="#">Your Library</a>
+                    </div>
+                    <div class="icons">
+                        <i class="fa-solid fa-plus" id="addPlaylistIcon" title="Create playlist"></i>
+                        <i class="fa-solid fa-arrow-right" id="expandLibIcon"></i>
+                    </div>
+                </div>
+                <div class="lib-boxes">
+                    <div class="box" id="createPlaylistBox">
+                        <p class="box-p1">Create your first playlist</p>
+                        <p class="box-p2">It's easy, we'll help you</p>
+                        <button class="badge" id="createPlaylistBtn">Create playlist</button>
+                    </div>
+                    <div class="box" id="browsePodcastBox">
+                        <p class="box-p1">Let's find some podcasts to follow</p>
+                        <p class="box-p2">We'll keep you updated on new episodes</p>
+                        <button class="badge" id="browsePodcastsBtn">Browse podcasts</button>
+                    </div>
+                </div>
+                <!-- User-created playlists appear here -->
+                <div class="sidebar-playlists" id="sidebarPlaylists"></div>
+
+                <!-- Spotify Sidebar Bottom Legal & Privacy Footer -->
+                <div class="sidebar-legal-footer">
+                    <div class="sidebar-legal-links">
+                        <a href="legal.html" class="sidebar-legal-link">Legal</a>
+                        <a href="safety-privacy-center.html" class="sidebar-legal-link">Safety & Privacy Center</a>
+                        <a href="privacy-policy.html" class="sidebar-legal-link">Privacy Policy</a>
+                        <a href="cookies.html" class="sidebar-legal-link">Cookies</a>
+                        <a href="about-ads.html" class="sidebar-legal-link">About Ads</a>
+                        <a href="accessibility.html" class="sidebar-legal-link">Accessibility</a>
+                        <a href="cookies.html" class="sidebar-legal-link">Cookies</a>
+                    </div>
+                    <button class="sidebar-lang-btn" id="sidebarLangBtn" type="button" title="Choose language">
+                        <i class="fa-solid fa-globe"></i> <span id="sidebarLangLabel">English</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== MAIN CONTENT ========== -->
+        <div class="main-content" id="mainContent">
+            <!-- Sticky Navigation Bar -->
+            <div class="sticky-nav">
+                <div class="sticky-nav-icons">
+                    <button class="nav-circle-btn" id="navBackBtn" title="Go back"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button class="nav-circle-btn" id="navForwardBtn" title="Go forward"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+                <!-- Search bar (hidden on Home, visible on Search page) -->
+                <div class="search-bar" id="searchBar" style="display:none;">
+                    <i class="fa-solid fa-magnifying-glass search-bar-icon"></i>
+                    <input type="text" id="searchInput" placeholder="What do you want to play?" autocomplete="off" spellcheck="false">
+                    <button class="clear-search" id="clearSearchBtn" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="sticky-nav-options">
+                    <button class="badge nav-item hide" id="navPremiumBtn">Explore Premium</button>
+                    <button class="badge nav-item dark-badge" id="navInstallBtn"><i class="fa-regular fa-circle-down" style="margin-right:5px"></i> Install App</button>
+                    <!-- Auth Buttons (Visible when Logged Out) -->
+                    <div class="nav-auth-buttons" id="navAuthButtons" style="display:none;">
+                        <button class="badge dark-badge" id="navSignUpBtn">Sign up</button>
+                        <button class="badge" id="navLoginBtn">Log in</button>
+                    </div>
+                    <div class="profile-nav-wrapper" id="navProfileWrapper">
+                        <button class="nav-user-btn" id="navUserBtn" title="Profile menu">
+                            <i class="fa-regular fa-user nav-user-icon"></i>
+                        </button>
+                        <!-- Profile Dropdown Menu -->
+                        <div class="profile-dropdown" id="profileDropdown" style="display:none;">
+                            <div class="dropdown-header">
+                                <span class="dropdown-name" id="dropdownUserName">Alex Morgan</span>
+                                <span class="dropdown-tier" id="dropdownUserTier">Spotify Free</span>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-item" id="dropdownProfileItem"><i class="fa-regular fa-user"></i> Profile</div>
+                            <div class="dropdown-item" id="dropdownAuthItem"><i class="fa-solid fa-user-plus"></i> Sign in / Register</div>
+                            <div class="dropdown-item" id="dropdownPremiumItem"><i class="fa-solid fa-gem"></i> Explore Premium</div>
+                            <div class="dropdown-item" id="dropdownSettingsItem"><i class="fa-solid fa-gear"></i> Settings</div>
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-item" id="dropdownLogoutItem"><i class="fa-solid fa-arrow-right-from-bracket"></i> Log out</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== PAGE: HOME ===== -->
+            <!-- ===== PAGE: HOME ===== -->
+            <div class="page" id="pageHome">
+                <h2>Recently Played</h2>
+                <div class="cards-container" id="recentlyPlayedCards">
+                    <div class="card" data-song-id="1">
+                        <div class="card-img-wrapper">
+                            <img src="./assesst/card1img.jpeg" class="card-img" alt="Top 50 - Global">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title">Top 50 - Global</p>
+                        <p class="card-info">Spotify Charts</p>
+                    </div>
+                    <div class="card" data-song-id="2">
+                        <div class="card-img-wrapper">
+                            <img src="./assesst/card2img.jpeg" class="card-img" alt="Mahiya Jinna Sohna">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title">Mahiya Jinna Sohna</p>
+                        <p class="card-info">Darshan Raval</p>
+                    </div>
+                    <div class="card" data-song-id="3">
+                        <div class="card-img-wrapper">
+                            <img src="./assesst/card3img.jpeg" class="card-img" alt="Mere Paas Tum Ho">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title">Mere Paas Tum Ho</p>
+                        <p class="card-info">Rahat Fateh Ali Khan</p>
+                    </div>
+                </div>
+
+                <h2>Trending now near you</h2>
+                <div class="cards-container" id="trendingCards">
+                    <div class="card" data-song-id="3">
+                        <div class="card-img-wrapper">
+                            <img src="./assesst/card3img.jpeg" class="card-img" alt="Mere Paas Tum Ho">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title">Mere Paas Tum Ho</p>
+                        <p class="card-info">Rahat Fateh Ali Khan</p>
+                    </div>
+                    <div class="card" data-song-id="4">
+                        <div class="card-img-wrapper">
+                            <img src="./assesst/card4img.jpeg" class="card-img" alt="Naa Ready - Leo">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title">Naa Ready - Leo</p>
+                        <p class="card-info">Anirudh Ravichander, Thalapathy Vijay</p>
+                    </div>
+                    <div class="card" data-song-id="5">
+                        <div class="card-img-wrapper">
+                            <img src="./assesst/card3img.jpeg" class="card-img" alt="Starboy">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title">Starboy</p>
+                        <p class="card-info">The Weeknd, Daft Punk</p>
+                    </div>
+                    <div class="card" data-song-id="6">
+                        <div class="card-img-wrapper">
+                            <img src="./assesst/card4img.jpeg" class="card-img" alt="Blinding Lights">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title">Blinding Lights</p>
+                        <p class="card-info">The Weeknd</p>
+                    </div>
+                    <div class="card" data-song-id="7">
+                        <div class="card-img-wrapper">
+                            <img src="./assesst/card5img.jpeg" class="card-img" alt="Top Songs - Global">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title">Top Songs - Global</p>
+                        <p class="card-info">Weekly Music Charts</p>
+                    </div>
+                </div>
+
+                <h2>Featured Charts</h2>
+                <div class="cards-container" id="featuredCards">
+                    <div class="card" data-song-id="7">
+                        <div class="card-img-wrapper">
+                            <img src="./assesst/card5img.jpeg" class="card-img" alt="Top Songs - Global">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title">Top Songs - Global</p>
+                        <p class="card-info">Weekly Music Charts</p>
+                    </div>
+                    <div class="card" data-song-id="8">
+                        <div class="card-img-wrapper">
+                            <img src="./assesst/card6img.jpeg" class="card-img" alt="Top Songs - India">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title">Top Songs - India</p>
+                        <p class="card-info">Weekly Music Charts - India</p>
+                    </div>
+                    <div class="card" data-song-id="9">
+                        <div class="card-img-wrapper">
+                            <img src="./assesst/card1img.jpeg" class="card-img" alt="Trending Chill Hits">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title">Trending Chill Hits</p>
+                        <p class="card-info">Spotify Curated</p>
+                    </div>
+                    <div class="card" data-song-id="1">
+                        <div class="card-img-wrapper">
+                            <img src="./assesst/card1img.jpeg" class="card-img" alt="Top 50 - Global">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title">Top 50 - Global</p>
+                        <p class="card-info">Spotify Charts</p>
+                    </div>
+                    <div class="card" data-song-id="2">
+                        <div class="card-img-wrapper">
+                            <img src="./assesst/card2img.jpeg" class="card-img" alt="Mahiya Jinna Sohna">
+                            <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                        <p class="card-title">Mahiya Jinna Sohna</p>
+                        <p class="card-info">Darshan Raval</p>
+                    </div>
+                </div>
+                <!-- ===== SPOTIFY FOOTER ===== -->
+                <footer class="spotify-footer">
+                    <div class="footer-top-section">
+                        <div class="footer-nav-columns">
+                            <div class="footer-column">
+                                <p class="footer-col-title">Company</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="about.html" class="footer-link">About</a></li>
+                                    <li><a href="jobs.html" class="footer-link">Jobs</a></li>
+                                    <li><a href="for-the-record.html" class="footer-link">For the Record</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Communities</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="for-artists.html" class="footer-link">For Artists</a></li>
+                                    <li><a href="for-creators.html" class="footer-link">For Creators</a></li>
+                                    <li><a href="for-authors.html" class="footer-link">For Authors</a></li>
+                                    <li><a href="developers.html" class="footer-link">Developers</a></li>
+                                    <li><a href="advertising.html" class="footer-link">Advertising</a></li>
+                                    <li><a href="investors.html" class="footer-link">Investors</a></li>
+                                    <li><a href="vendors.html" class="footer-link">Vendors</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Useful links</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="support.html" class="footer-link">Support</a></li>
+                                    <li><a href="free-mobile-app.html" class="footer-link">Free Mobile App</a></li>
+                                    <li><a href="popular-by-country.html" class="footer-link">Popular by Country</a></li>
+                                    <li><a href="top-song-lyrics.html" class="footer-link">Top Song Lyrics</a></li>
+                                    <li><a href="import-your-music.html" class="footer-link">Import your music</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Spotify Plans</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="premium-standard.html" class="footer-link">Premium Standard</a></li>
+                                    <li><a href="premium-platinum.html" class="footer-link">Premium Platinum</a></li>
+                                    <li><a href="premium-student.html" class="footer-link">Premium Student</a></li>
+                                    <li><a href="spotify-free.html" class="footer-link">Spotify Free</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="footer-social-links">
+                            <a href="https://instagram.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Instagram" title="Instagram">
+                                <i class="fa-brands fa-instagram"></i>
+                            </a>
+                            <a href="https://twitter.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Twitter" title="Twitter / X">
+                                <i class="fa-brands fa-x-twitter"></i>
+                            </a>
+                            <a href="https://facebook.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Facebook" title="Facebook">
+                                <i class="fa-brands fa-facebook-f"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="footer-divider-line"></div>
+
+                    <div class="footer-bottom-section">
+                        <p class="footer-copyright">© 2026 Spotify AB</p>
+                    </div>
+                </footer>
+            </div>
+
+            <!-- ===== PAGE: SEARCH ===== -->
+            <div class="page" id="pageSearch" style="display:none;">
+                <div id="searchDefault">
+                    <h2>Browse all</h2>
+                    <div class="browse-grid" id="browseGrid">
+                        <div class="genre-card" style="background:#e8115b;" data-genre="Pop">
+                            <h3 class="genre-title">Pop</h3>
+                            <img src="./assesst/search1.jpg" class="genre-img" alt="Pop" loading="lazy">
+                        </div>
+                        <div class="genre-card" style="background:#ba5d07;" data-genre="Hip-Hop">
+                            <h3 class="genre-title">Hip-Hop</h3>
+                            <img src="./assesst/search2.jpg" class="genre-img" alt="Hip-Hop" loading="lazy">
+                        </div>
+                        <div class="genre-card" style="background:#e91429;" data-genre="Rock">
+                            <h3 class="genre-title">Rock</h3>
+                            <img src="./assesst/search3.jpg" class="genre-img" alt="Rock" loading="lazy">
+                        </div>
+                        <div class="genre-card" style="background:#608108;" data-genre="Indie">
+                            <h3 class="genre-title">Indie</h3>
+                            <img src="./assesst/search4.jpg" class="genre-img" alt="Indie" loading="lazy">
+                        </div>
+                        <div class="genre-card" style="background:#d84000;" data-genre="Bollywood">
+                            <h3 class="genre-title">Bollywood</h3>
+                            <img src="./assesst/search5.jpg" class="genre-img" alt="Bollywood" loading="lazy">
+                        </div>
+                        <div class="genre-card" style="background:#1e3264;" data-genre="Chill">
+                            <h3 class="genre-title">Chill</h3>
+                            <img src="./assesst/search6.jpg" class="genre-img" alt="Chill" loading="lazy">
+                        </div>
+                        <div class="genre-card" style="background:#8400e7;" data-genre="Dance">
+                            <h3 class="genre-title">Dance</h3>
+                            <img src="./assesst/search7.jpg" class="genre-img" alt="Dance" loading="lazy">
+                        </div>
+                        <div class="genre-card" style="background:#006450;" data-genre="Devotional">
+                            <h3 class="genre-title">Devotional</h3>
+                            <img src="./assesst/search8.jpg" class="genre-img" alt="Devotional" loading="lazy">
+                        </div>
+                        <div class="genre-card" style="background:#b02897;" data-genre="Punjabi">
+                            <h3 class="genre-title">Punjabi</h3>
+                            <img src="./assesst/search9.jpg" class="genre-img" alt="Punjabi" loading="lazy">
+                        </div>
+                        <div class="genre-card" style="background:#777777;" data-genre="Workout">
+                            <h3 class="genre-title">Workout</h3>
+                            <img src="./assesst/search10.jpg" class="genre-img" alt="Workout" loading="lazy">
+                        </div>
+                        <div class="genre-card" style="background:#e1118c;" data-genre="Romance">
+                            <h3 class="genre-title">Romance</h3>
+                            <img src="./assesst/search11.jpg" class="genre-img" alt="Romance" loading="lazy">
+                        </div>
+                        <div class="genre-card" style="background:#509bf5;" data-genre="Party">
+                            <h3 class="genre-title">Party</h3>
+                            <img src="./assesst/search12.jpg" class="genre-img" alt="Party" loading="lazy">
+                        </div>
+                    </div>
+                </div>
+                <div id="searchResults" style="display:none;">
+                    <h2>Search Results</h2>
+                    <div class="cards-container" id="searchResultCards"></div>
+                </div>
+                <div class="no-results" id="noResults" style="display:none;">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <h3>No results found</h3>
+                    <p>Please make sure your words are spelled correctly, or use fewer or different keywords.</p>
+                </div>
+            </div>
+
+            <!-- ===== PAGE: YOUR LIBRARY ===== -->
+            <div class="page" id="pageLibrary" style="display:none;">
+                <div class="library-header">
+                    <h2>Your Library</h2>
+                    <div class="library-filters">
+                        <button class="filter-chip active-chip" data-filter="all">All</button>
+                        <button class="filter-chip" data-filter="playlists">Playlists</button>
+                        <button class="filter-chip" data-filter="liked">Liked Songs</button>
+                    </div>
+                </div>
+                <!-- Liked Songs section -->
+                <div class="liked-songs-banner" id="likedSongsBanner">
+                    <div class="liked-songs-icon"><i class="fa-solid fa-heart"></i></div>
+                    <div class="liked-songs-info">
+                        <h3>Liked Songs</h3>
+                        <p id="likedSongsCount">0 songs</p>
+                    </div>
+                </div>
+                <!-- User Playlists grid -->
+                <div class="library-playlists" id="libraryPlaylists"></div>
+                <!-- Liked songs list -->
+                <div class="liked-songs-list" id="likedSongsList" style="display:none;"></div>
+            </div>
+
+            <!-- ===== PAGE: CREATE PLAYLIST ===== -->
+            <div class="page" id="pageCreatePlaylist" style="display:none;">
+                <div class="create-playlist-page">
+                    <div class="create-playlist-hero">
+                        <div class="playlist-cover-placeholder" id="playlistCoverPreview">
+                            <i class="fa-solid fa-music"></i>
+                        </div>
+                        <div class="create-playlist-form">
+                            <h1 id="newPlaylistTitle">My Playlist #1</h1>
+                            <p class="create-playlist-sub">Give your playlist a catchy name and start adding songs.</p>
+                            <div class="form-group">
+                                <label for="playlistNameInput">Playlist Name</label>
+                                <input type="text" id="playlistNameInput" placeholder="My awesome playlist" maxlength="60" autocomplete="off">
+                            </div>
+                            <div class="form-group">
+                                <label for="playlistDescInput">Description <span class="optional">(optional)</span></label>
+                                <textarea id="playlistDescInput" placeholder="Add an optional description" rows="3" maxlength="300"></textarea>
+                            </div>
+                            <button class="badge create-btn" id="savePlaylistBtn"><i class="fa-solid fa-check" style="margin-right:6px"></i> Create Playlist</button>
+                        </div>
+                    </div>
+                    <h3 style="margin-top:2rem;">Add songs to your playlist</h3>
+                    <div class="playlist-search-bar">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="playlistSongSearch" placeholder="Search for songs to add" autocomplete="off">
+                    </div>
+                    <div class="playlist-song-results" id="playlistSongResults"></div>
+                </div>
+            </div>
+
+            <!-- ===== PAGE: BROWSE PODCASTS ===== -->
+            <div class="page" id="pagePodcasts" style="display:none;">
+                <h2>Browse Podcasts</h2>
+                <p class="podcast-subtitle">Discover top podcasts across every category</p>
+                <div class="podcast-categories" id="podcastCategories">
+                    <!-- JS fills these -->
+                </div>
+                <h2 style="margin-top:2rem;">Popular Podcasts</h2>
+                <div class="cards-container" id="podcastCards">
+                    <!-- JS fills podcast cards -->
+                </div>
+            </div>
+
+            <!-- ===== PAGE: PLAYLIST DETAIL ===== -->
+            <div class="page" id="pagePlaylistDetail" style="display:none;">
+                <div class="playlist-detail-header" id="playlistDetailHeader">
+                    <!-- JS fills: cover, title, description, song count -->
+                </div>
+                <div class="playlist-detail-actions">
+                    <button class="play-all-btn" id="playAllBtn"><i class="fa-solid fa-play"></i></button>
+                    <button class="badge dark-badge" id="shufflePlaylistBtn"><i class="fa-solid fa-shuffle" style="margin-right:5px"></i> Shuffle</button>
+                </div>
+                <div class="playlist-track-list" id="playlistTrackList">
+                    <!-- JS fills track rows -->
+                </div>
+            </div>
+
+            <!-- ===== PAGE: EXPLORE PREMIUM ===== -->
+            <div class="page" id="pagePremium" style="display:none;">
+                <!-- Premium Hero Banner -->
+                <div class="premium-hero">
+                    <span class="premium-hero-tag"><i class="fa-solid fa-gem"></i> SPOTIFY PREMIUM</span>
+                    <h1 class="premium-hero-title">Endless music.<br>Zero ad interruptions.</h1>
+                    <p class="premium-hero-sub">Experience Spotify Premium free for 1 month, then just $10.99 / month. Cancel anytime with a single click.</p>
+                    <div class="premium-hero-actions">
+                        <button class="badge premium-hero-btn" id="heroTryPremiumBtn">Try 1 Month Free</button>
+                        <button class="badge dark-badge" id="heroViewPlansBtn">View All Plans</button>
+                    </div>
+                    <p class="premium-fine-print">1 month free not available for users who have already tried Premium. Terms apply.</p>
+                </div>
+
+                <!-- Why Go Premium Features -->
+                <div class="premium-benefits-section">
+                    <h2>Why go Premium?</h2>
+                    <div class="premium-benefits-grid">
+                        <div class="benefit-card">
+                            <div class="benefit-icon"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+                            <h4>Download music</h4>
+                            <p>Listen anywhere without WiFi or cellular data. Save your favorites right to your device.</p>
+                        </div>
+                        <div class="benefit-card">
+                            <div class="benefit-icon"><i class="fa-solid fa-ban"></i></div>
+                            <h4>Zero interruptions</h4>
+                            <p>Enjoy uninterrupted, ad-free music across all your playlists, albums, and tracks.</p>
+                        </div>
+                        <div class="benefit-card">
+                            <div class="benefit-icon"><i class="fa-solid fa-forward-step"></i></div>
+                            <h4>Unlimited skips</h4>
+                            <p>Skip forward or backward as many times as you like. Full control of what plays next.</p>
+                        </div>
+                        <div class="benefit-card">
+                            <div class="benefit-icon"><i class="fa-solid fa-headphones-simple"></i></div>
+                            <h4>High-fidelity audio</h4>
+                            <p>Stream in crystal-clear 320 kbps studio sound with deeper bass and pristine highs.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Plans Section with Billing Cycle Toggle -->
+                <div class="premium-plans-section" id="premiumPlansSection">
+                    <div class="plans-header-row">
+                        <div>
+                            <h2>Pick your Premium plan</h2>
+                            <p class="section-subtext">Listen without limits on your phone, speaker, laptop, and smart TV.</p>
+                        </div>
+                        <!-- Billing Toggle -->
+                        <div class="billing-toggle-container">
+                            <button class="billing-toggle-btn active-toggle" id="billingMonthlyBtn">Monthly</button>
+                            <button class="billing-toggle-btn" id="billingAnnualBtn">Annual <span class="discount-pill">Save 20%</span></button>
+                        </div>
+                    </div>
+
+                    <!-- Plans Grid (Filled by js/premium.js) -->
+                    <div class="premium-plans-grid" id="premiumPlansGrid"></div>
+                </div>
+
+                <!-- Feature Comparison Table -->
+                <div class="premium-comparison-section">
+                    <h2>Compare Free vs Premium</h2>
+                    <div class="comparison-table-wrapper">
+                        <table class="comparison-table">
+                            <thead>
+                                <tr>
+                                    <th>What you get</th>
+                                    <th>Spotify Free</th>
+                                    <th class="col-premium">Spotify Premium</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Over 100M songs & podcasts</td>
+                                    <td><i class="fa-solid fa-check check-yes"></i></td>
+                                    <td class="col-premium"><i class="fa-solid fa-check check-yes"></i></td>
+                                </tr>
+                                <tr>
+                                    <td>Ad-free music listening</td>
+                                    <td><i class="fa-solid fa-xmark check-no"></i></td>
+                                    <td class="col-premium"><i class="fa-solid fa-check check-yes"></i></td>
+                                </tr>
+                                <tr>
+                                    <td>Download to listen offline</td>
+                                    <td><i class="fa-solid fa-xmark check-no"></i></td>
+                                    <td class="col-premium"><i class="fa-solid fa-check check-yes"></i></td>
+                                </tr>
+                                <tr>
+                                    <td>Play songs in any order</td>
+                                    <td><i class="fa-solid fa-xmark check-no"></i></td>
+                                    <td class="col-premium"><i class="fa-solid fa-check check-yes"></i></td>
+                                </tr>
+                                <tr>
+                                    <td>Very High audio quality (320 kbps)</td>
+                                    <td><i class="fa-solid fa-xmark check-no"></i></td>
+                                    <td class="col-premium"><i class="fa-solid fa-check check-yes"></i></td>
+                                </tr>
+                                <tr>
+                                    <td>Organize listening queue</td>
+                                    <td><i class="fa-solid fa-xmark check-no"></i></td>
+                                    <td class="col-premium"><i class="fa-solid fa-check check-yes"></i></td>
+                                </tr>
+                                <tr>
+                                    <td>Listen with friends in real time</td>
+                                    <td><i class="fa-solid fa-xmark check-no"></i></td>
+                                    <td class="col-premium"><i class="fa-solid fa-check check-yes"></i></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Frequently Asked Questions -->
+                <div class="premium-faq-section">
+                    <h2>Frequently asked questions</h2>
+                    <div class="faq-container" id="premiumFaqContainer">
+                        <!-- Populated by js/premium.js -->
+                    </div>
+                </div>
+
+                <!-- ===== SPOTIFY FOOTER ===== -->
+                <footer class="spotify-footer">
+                    <div class="footer-top-section">
+                        <div class="footer-nav-columns">
+                            <div class="footer-column">
+                                <p class="footer-col-title">Company</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="about.html" class="footer-link">About</a></li>
+                                    <li><a href="jobs.html" class="footer-link">Jobs</a></li>
+                                    <li><a href="for-the-record.html" class="footer-link">For the Record</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Communities</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="for-artists.html" class="footer-link">For Artists</a></li>
+                                    <li><a href="for-creators.html" class="footer-link">For Creators</a></li>
+                                    <li><a href="for-authors.html" class="footer-link">For Authors</a></li>
+                                    <li><a href="developers.html" class="footer-link">Developers</a></li>
+                                    <li><a href="advertising.html" class="footer-link">Advertising</a></li>
+                                    <li><a href="investors.html" class="footer-link">Investors</a></li>
+                                    <li><a href="vendors.html" class="footer-link">Vendors</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Useful links</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="support.html" class="footer-link">Support</a></li>
+                                    <li><a href="free-mobile-app.html" class="footer-link">Free Mobile App</a></li>
+                                    <li><a href="popular-by-country.html" class="footer-link">Popular by Country</a></li>
+                                    <li><a href="top-song-lyrics.html" class="footer-link">Top Song Lyrics</a></li>
+                                    <li><a href="import-your-music.html" class="footer-link">Import your music</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Spotify Plans</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="premium-standard.html" class="footer-link">Premium Standard</a></li>
+                                    <li><a href="premium-platinum.html" class="footer-link">Premium Platinum</a></li>
+                                    <li><a href="premium-student.html" class="footer-link">Premium Student</a></li>
+                                    <li><a href="spotify-free.html" class="footer-link">Spotify Free</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="footer-social-links">
+                            <a href="https://instagram.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Instagram" title="Instagram">
+                                <i class="fa-brands fa-instagram"></i>
+                            </a>
+                            <a href="https://twitter.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Twitter" title="Twitter / X">
+                                <i class="fa-brands fa-x-twitter"></i>
+                            </a>
+                            <a href="https://facebook.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Facebook" title="Facebook">
+                                <i class="fa-brands fa-facebook-f"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="footer-divider-line"></div>
+
+                    <div class="footer-bottom-section">
+                        <p class="footer-copyright">© 2026 Spotify AB</p>
+                    </div>
+                </footer>
+            </div>
+
+            <!-- ===== PAGE: PROFILE ===== -->
+            <div class="page" id="pageProfile" style="display:none;">
+                <!-- Profile Hero Header -->
+                <div class="profile-hero">
+                    <div class="profile-avatar-container">
+                        <img src="./assesst/logo.png" class="profile-avatar-img" id="profileHeroAvatar" alt="Profile avatar">
+                        <div class="profile-avatar-hover" id="profileAvatarHover" title="Change photo">
+                            <i class="fa-solid fa-pen"></i>
+                            <span>Edit</span>
+                        </div>
+                    </div>
+                    <div class="profile-hero-meta">
+                        <div class="profile-badge-row">
+                            <span class="profile-type-tag">PROFILE</span>
+                            <span class="profile-badge free-badge" id="profileTierBadge">SPOTIFY FREE</span>
+                        </div>
+                        <h1 class="profile-display-name" id="profileHeroName">Alex Morgan</h1>
+                        <p class="profile-bio-text" id="profileHeroBio">Music curator • Late night lo-fi, synthwave & indie acoustic enthusiast 🎧</p>
+                        <div class="profile-stats-row" id="profileHeroStats">
+                            <span><strong>0</strong> Public Playlists</span>
+                            <span class="stat-bullet">•</span>
+                            <span><strong>182</strong> Followers</span>
+                            <span class="stat-bullet">•</span>
+                            <span><strong>14</strong> Following</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Action Bar -->
+                <div class="profile-action-bar">
+                    <button class="badge dark-badge" id="editProfileBtn"><i class="fa-solid fa-pen" style="margin-right:6px"></i> Edit Profile</button>
+                    <button class="badge dark-badge" id="shareProfileBtn"><i class="fa-solid fa-share-nodes" style="margin-right:6px"></i> Share</button>
+                    <button class="badge premium-upgrade-badge" id="profileUpgradeBtn"><i class="fa-solid fa-gem" style="margin-right:6px"></i> Upgrade to Premium</button>
+                    <button class="badge dark-badge" id="profileAuthBtn"><i class="fa-solid fa-user-plus" style="margin-right:6px"></i> Switch / Sign In</button>
+                    <button class="badge dark-badge profile-logout-btn" id="profileLogoutBtn"><i class="fa-solid fa-arrow-right-from-bracket" style="margin-right:6px"></i> Log out</button>
+                </div>
+
+                <!-- Profile Tabs Navigation -->
+                <div class="profile-nav-tabs">
+                    <button class="profile-nav-tab active-tab" data-target="profileTabPlaylists">Public Playlists</button>
+                    <button class="profile-nav-tab" data-target="profileTabArtists">Top Artists</button>
+                    <button class="profile-nav-tab" data-target="profileTabSettings">Account & Preferences</button>
+                </div>
+
+                <!-- Profile Tab 1: Playlists -->
+                <div class="profile-tab-pane" id="profileTabPlaylists">
+                    <div class="cards-container" id="profilePlaylistsGrid">
+                        <!-- Populated by js/profile.js -->
+                    </div>
+                </div>
+
+                <!-- Profile Tab 2: Top Artists -->
+                <div class="profile-tab-pane" id="profileTabArtists" style="display:none;">
+                    <div class="artists-grid" id="profileArtistsGrid">
+                        <!-- Populated by js/profile.js -->
+                    </div>
+                </div>
+
+                <!-- Profile Tab 3: Account & Preferences -->
+                <div class="profile-tab-pane" id="profileTabSettings" style="display:none;">
+                    <div class="settings-box">
+                        <h3>Streaming & Audio Quality</h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-title">Streaming Quality</span>
+                                <span class="setting-desc">Set your audio fidelity. Higher quality uses more network bandwidth.</span>
+                            </div>
+                            <select class="setting-select" id="settingAudioQuality">
+                                <option value="automatic">Automatic (Recommended)</option>
+                                <option value="low">Low (24 kbps)</option>
+                                <option value="normal">Normal (96 kbps)</option>
+                                <option value="high">High (160 kbps)</option>
+                                <option value="very-high">Very High (320 kbps - Premium)</option>
+                            </select>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-title">Crossfade Songs</span>
+                                <span class="setting-desc">Allows smooth crossfading transitions between consecutive tracks.</span>
+                            </div>
+                            <div class="setting-control-row">
+                                <span class="setting-value-pill" id="crossfadeValue">4s</span>
+                                <input type="range" min="0" max="12" value="4" class="setting-slider" id="settingCrossfade">
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-title">Autoplay Similar Content</span>
+                                <span class="setting-desc">Keep listening without pause when your current track or album finishes.</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="settingAutoplay" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+
+                        <h3 style="margin-top:2rem;">Privacy & Safety</h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-title">Allow Explicit Content</span>
+                                <span class="setting-desc">Play tracks tagged with explicit lyrics or adult themes.</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="settingExplicit" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-title">Private Session</span>
+                                <span class="setting-desc">Temporarily hide your listening activity from friends and profile history.</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="settingPrivateSession">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+
+                        <h3 style="margin-top:2rem;">Account & Security</h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-title">Switch or Register Account</span>
+                                <span class="setting-desc">Log into another Spotify account or create a brand new profile.</span>
+                            </div>
+                            <button class="badge dark-badge" id="settingSwitchAccountBtn">Sign in / Register</button>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-title">Log Out</span>
+                                <span class="setting-desc">Log out of your current Spotify account on this browser.</span>
+                            </div>
+                            <button class="badge dark-badge" id="settingLogoutBtn" style="border-color:#ff4444;color:#ff6666;">Log Out</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== SPOTIFY FOOTER ===== -->
+                <footer class="spotify-footer">
+                    <div class="footer-top-section">
+                        <div class="footer-nav-columns">
+                            <div class="footer-column">
+                                <p class="footer-col-title">Company</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="about.html" class="footer-link">About</a></li>
+                                    <li><a href="jobs.html" class="footer-link">Jobs</a></li>
+                                    <li><a href="for-the-record.html" class="footer-link">For the Record</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Communities</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="for-artists.html" class="footer-link">For Artists</a></li>
+                                    <li><a href="for-creators.html" class="footer-link">For Creators</a></li>
+                                    <li><a href="for-authors.html" class="footer-link">For Authors</a></li>
+                                    <li><a href="developers.html" class="footer-link">Developers</a></li>
+                                    <li><a href="advertising.html" class="footer-link">Advertising</a></li>
+                                    <li><a href="investors.html" class="footer-link">Investors</a></li>
+                                    <li><a href="vendors.html" class="footer-link">Vendors</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Useful links</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="support.html" class="footer-link">Support</a></li>
+                                    <li><a href="free-mobile-app.html" class="footer-link">Free Mobile App</a></li>
+                                    <li><a href="popular-by-country.html" class="footer-link">Popular by Country</a></li>
+                                    <li><a href="top-song-lyrics.html" class="footer-link">Top Song Lyrics</a></li>
+                                    <li><a href="import-your-music.html" class="footer-link">Import your music</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Spotify Plans</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="premium-standard.html" class="footer-link">Premium Standard</a></li>
+                                    <li><a href="premium-platinum.html" class="footer-link">Premium Platinum</a></li>
+                                    <li><a href="premium-student.html" class="footer-link">Premium Student</a></li>
+                                    <li><a href="spotify-free.html" class="footer-link">Spotify Free</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="footer-social-links">
+                            <a href="https://instagram.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Instagram" title="Instagram">
+                                <i class="fa-brands fa-instagram"></i>
+                            </a>
+                            <a href="https://twitter.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Twitter" title="Twitter / X">
+                                <i class="fa-brands fa-x-twitter"></i>
+                            </a>
+                            <a href="https://facebook.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Facebook" title="Facebook">
+                                <i class="fa-brands fa-facebook-f"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="footer-divider-line"></div>
+
+                    <div class="footer-bottom-section">
+                        <p class="footer-copyright">© 2026 Spotify AB</p>
+                    </div>
+                </footer>
+            </div>
+
+            <!-- ===== PAGE: MUSIC / NOW PLAYING ===== -->
+            <div class="page" id="pageMusic" style="display:none;">
+                <!-- Navigation Bar on Music Page -->
+                <div class="music-screen-topbar">
+                    <button class="badge dark-badge music-back-btn" id="musicBackBtn">
+                        <i class="fa-solid fa-arrow-left" style="margin-right:6px"></i> Back
+                    </button>
+                    <span class="music-screen-status"><i class="fa-solid fa-compact-disc fa-spin"></i> NOW PLAYING</span>
+                </div>
+
+                <!-- Music Hero Showcase -->
+                <div class="music-hero-showcase" id="musicHeroShowcase">
+                    <div class="music-art-wrapper">
+                        <img src="./assesst/card1img.jpeg" class="music-large-art" id="musicPageArt" alt="Track Artwork">
+                        <div class="music-art-ambient-glow" id="musicArtGlow"></div>
+                    </div>
+                    <div class="music-hero-details">
+                        <span class="music-type-pill">SONG</span>
+                        <h1 class="music-page-title" id="musicPageTitle">Top 50 - Global</h1>
+                        <div class="music-page-artist-row" id="musicPageArtistRow">
+                            <img src="./assesst/logo.png" class="music-artist-mini-avatar" id="musicPageArtistAvatar" alt="Artist">
+                            <span class="music-page-artist" id="musicPageArtist">Spotify Charts</span>
+                            <span class="bullet">•</span>
+                            <span id="musicPageAlbum">Global Hits</span>
+                            <span class="bullet">•</span>
+                            <span id="musicPageYear">2024</span>
+                            <span class="bullet">•</span>
+                            <span id="musicPageDuration">3:33</span>
+                        </div>
+                        <div class="music-audio-meta-pills">
+                            <span class="audio-pill"><i class="fa-solid fa-gauge-high"></i> <span id="musicPageBpm">104 BPM</span></span>
+                            <span class="audio-pill"><i class="fa-solid fa-music"></i> <span id="musicPageKey">Key: C Major</span></span>
+                            <span class="audio-pill"><i class="fa-solid fa-wave-square"></i> <span id="musicPageFidelity">320 kbps Master</span></span>
+                        </div>
+                        <!-- Hero Actions -->
+                        <div class="music-hero-actions">
+                            <button class="music-big-play-btn" id="musicPagePlayBtn" title="Play / Pause">
+                                <i class="fa-solid fa-play" id="musicPagePlayIcon"></i>
+                            </button>
+                            <button class="music-icon-action-btn" id="musicPageLikeBtn" title="Save to Your Library">
+                                <i class="fa-regular fa-heart"></i>
+                            </button>
+                            <button class="music-icon-action-btn" id="musicPageAddToPlaylistBtn" title="Add to playlist">
+                                <i class="fa-solid fa-circle-plus"></i>
+                            </button>
+                            <button class="music-icon-action-btn" id="musicPageShareBtn" title="Share track">
+                                <i class="fa-solid fa-share-nodes"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Real-Time Audio Frequency Spectrum Visualizer -->
+                <div class="music-visualizer-container" id="musicVisualizerContainer">
+                    <div class="visualizer-header">
+                        <div class="visualizer-title">
+                            <i class="fa-solid fa-wave-square visualizer-icon" id="visualizerIcon"></i>
+                            <span class="visualizer-title-text">Live Audio Spectrum Visualizer</span>
+                            <span class="visualizer-live-badge"><span class="live-dot"></span> LIVE WEB AUDIO</span>
+                        </div>
+                        <div class="visualizer-controls">
+                            <div class="visualizer-modes">
+                                <button class="visualizer-mode-btn active" data-mode="bars" title="Frequency Bars"><i class="fa-solid fa-chart-simple"></i> Bars</button>
+                                <button class="visualizer-mode-btn" data-mode="wave" title="Oscilloscope Wave"><i class="fa-solid fa-water"></i> Wave</button>
+                                <button class="visualizer-mode-btn" data-mode="radial" title="Radial Pulse"><i class="fa-solid fa-circle-notch"></i> Radial</button>
+                            </div>
+                            <button class="visualizer-toggle-btn" id="visualizerToggleBtn" title="Toggle Compact / Expanded View">
+                                <i class="fa-solid fa-expand" id="visualizerToggleIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="visualizer-canvas-wrapper" id="visualizerCanvasWrapper">
+                        <canvas id="audioVisualizerCanvas" class="audio-visualizer-canvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Music Content Grid: Lyrics (Left) + About Artist & Recommended (Right) -->
+                <div class="music-content-grid">
+                    <!-- Left: Synchronized Lyrics -->
+                    <div class="music-lyrics-container">
+                        <div class="lyrics-header">
+                            <h3><i class="fa-solid fa-microphone-lines" style="color:#1ed760;margin-right:8px"></i> Live Lyrics</h3>
+                            <span class="lyrics-sync-indicator"><i class="fa-solid fa-circle-play"></i> Click line to seek</span>
+                        </div>
+                        <div class="music-lyrics-scroll" id="musicPageLyrics">
+                            <!-- Populated with lyric lines -->
+                        </div>
+                    </div>
+
+                    <!-- Right Column: About Artist + Recommended Up Next -->
+                    <div class="music-sidebar-column">
+                        <!-- About the Artist Card -->
+                        <div class="about-artist-card" id="aboutArtistCard">
+                            <div class="about-artist-header">
+                                <img src="./assesst/card1img.jpeg" class="about-artist-img" id="aboutArtistImg" alt="Artist">
+                                <div class="about-artist-header-info">
+                                    <span class="artist-subtag">ABOUT THE ARTIST</span>
+                                    <h4 id="aboutArtistName">Spotify Charts</h4>
+                                    <p class="about-artist-listeners" id="aboutArtistListeners">124,582,910 monthly listeners</p>
+                                </div>
+                            </div>
+                            <p class="about-artist-bio" id="aboutArtistBio">
+                                The most played tracks on Spotify globally, updated daily with trending songs across charts worldwide.
+                            </p>
+                            <button class="badge dark-badge" id="aboutArtistFollowBtn">Follow</button>
+                        </div>
+
+                        <!-- Recommended & Up Next Songs -->
+                        <div class="music-up-next-section">
+                            <h3>Up Next & Recommended</h3>
+                            <div class="up-next-list" id="musicUpNextList">
+                                <!-- Populated with related tracks -->
+                            </div>
+                        </div>
+
+                        <!-- Song Credits Box -->
+                        <div class="song-credits-box">
+                            <h4>Song Credits</h4>
+                            <div class="credit-row">
+                                <span class="credit-role">Performed by</span>
+                                <span class="credit-name" id="creditArtist">Spotify Charts</span>
+                            </div>
+                            <div class="credit-row">
+                                <span class="credit-role">Written by</span>
+                                <span class="credit-name" id="creditWriters">Songwriters & Composers</span>
+                            </div>
+                            <div class="credit-row">
+                                <span class="credit-role">Produced by</span>
+                                <span class="credit-name" id="creditProducers">Executive Studio Production</span>
+                            </div>
+                            <div class="credit-row">
+                                <span class="credit-role">Source & Synthesis</span>
+                                <span class="credit-name" id="creditSynth">Web Audio API • Polyphonic Synth Engine</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== SPOTIFY FOOTER ===== -->
+                <footer class="spotify-footer">
+                    <div class="footer-top-section">
+                        <div class="footer-nav-columns">
+                            <div class="footer-column">
+                                <p class="footer-col-title">Company</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="about.html" class="footer-link">About</a></li>
+                                    <li><a href="jobs.html" class="footer-link">Jobs</a></li>
+                                    <li><a href="for-the-record.html" class="footer-link">For the Record</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Communities</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="for-artists.html" class="footer-link">For Artists</a></li>
+                                    <li><a href="for-creators.html" class="footer-link">For Creators</a></li>
+                                    <li><a href="for-authors.html" class="footer-link">For Authors</a></li>
+                                    <li><a href="developers.html" class="footer-link">Developers</a></li>
+                                    <li><a href="advertising.html" class="footer-link">Advertising</a></li>
+                                    <li><a href="investors.html" class="footer-link">Investors</a></li>
+                                    <li><a href="vendors.html" class="footer-link">Vendors</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Useful links</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="support.html" class="footer-link">Support</a></li>
+                                    <li><a href="free-mobile-app.html" class="footer-link">Free Mobile App</a></li>
+                                    <li><a href="popular-by-country.html" class="footer-link">Popular by Country</a></li>
+                                    <li><a href="top-song-lyrics.html" class="footer-link">Top Song Lyrics</a></li>
+                                    <li><a href="import-your-music.html" class="footer-link">Import your music</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Spotify Plans</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="premium-standard.html" class="footer-link">Premium Standard</a></li>
+                                    <li><a href="premium-platinum.html" class="footer-link">Premium Platinum</a></li>
+                                    <li><a href="premium-student.html" class="footer-link">Premium Student</a></li>
+                                    <li><a href="spotify-free.html" class="footer-link">Spotify Free</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="footer-social-links">
+                            <a href="https://instagram.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Instagram" title="Instagram">
+                                <i class="fa-brands fa-instagram"></i>
+                            </a>
+                            <a href="https://twitter.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Twitter" title="Twitter / X">
+                                <i class="fa-brands fa-x-twitter"></i>
+                            </a>
+                            <a href="https://facebook.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Facebook" title="Facebook">
+                                <i class="fa-brands fa-facebook-f"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="footer-divider-line"></div>
+
+                    <div class="footer-bottom-section">
+                        <p class="footer-copyright">© 2026 Spotify AB</p>
+                    </div>
+                </footer>
+            </div>
+
+            <!-- ===== PAGE: AUTH (SIGN IN & REGISTER) ===== -->
+            <div class="page" id="pageAuth" style="display:none;">
+                <div class="auth-page-container">
+                    <div class="auth-card">
+                        <!-- Auth Header & Brand Logo -->
+                        <div class="auth-header">
+                            <div class="auth-logo-badge">
+                                <i class="fa-brands fa-spotify auth-spotify-icon"></i>
+                            </div>
+                            <h1 class="auth-title" id="authMainTitle">Life is happening now</h1>
+                            <p class="auth-subtitle">Log in or sign up to save playlists, follow artists, and explore high-fidelity sound.</p>
+                        </div>
+
+                        <!-- Tab Switcher: Log In vs Sign Up -->
+                        <div class="auth-tabs">
+                            <button class="auth-tab-btn active-auth-tab" id="authTabLogin">Log In</button>
+                            <button class="auth-tab-btn" id="authTabRegister">Sign Up</button>
+                        </div>
+
+                        <!-- Social Fast Auth Buttons -->
+                        <div class="social-auth-buttons">
+                            <button class="social-auth-btn" id="socialGoogleBtn">
+                                <i class="fa-brands fa-google"></i> Continue with Google
+                            </button>
+                            <button class="social-auth-btn" id="socialFacebookBtn">
+                                <i class="fa-brands fa-facebook"></i> Continue with Facebook
+                            </button>
+                            <button class="social-auth-btn" id="socialAppleBtn">
+                                <i class="fa-brands fa-apple"></i> Continue with Apple
+                            </button>
+                        </div>
+
+                        <div class="auth-divider">
+                            <span>or with email</span>
+                        </div>
+
+                        <!-- Form 1: Log In -->
+                        <form class="auth-form" id="loginForm">
+                            <div class="auth-input-group">
+                                <label for="loginEmailInput">Email or username</label>
+                                <div class="auth-input-wrapper">
+                                    <i class="fa-regular fa-envelope input-icon"></i>
+                                    <input type="text" id="loginEmailInput" placeholder="Email or username" autocomplete="username">
+                                </div>
+                            </div>
+
+                            <div class="auth-input-group">
+                                <label for="loginPasswordInput">Password</label>
+                                <div class="auth-input-wrapper">
+                                    <i class="fa-solid fa-lock input-icon"></i>
+                                    <input type="password" id="loginPasswordInput" placeholder="Password" autocomplete="current-password">
+                                    <button type="button" class="toggle-password-btn" id="toggleLoginPass" title="Toggle password visibility">
+                                        <i class="fa-regular fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="auth-options-row">
+                                <label class="remember-me-label">
+                                    <input type="checkbox" id="rememberMeCheckbox" checked>
+                                    <span>Remember me</span>
+                                </label>
+                                <a href="#" class="forgot-link" id="forgotPassLink" onclick="event.preventDefault();alert('In a production app, password reset instructions are sent to your email address.');">Forgot password?</a>
+                            </div>
+
+                            <button type="submit" class="badge auth-submit-btn" id="loginSubmitBtn">Log In</button>
+
+                            <p class="auth-switch-text">
+                                Don't have an account? <a href="#" id="switchToRegisterPrompt">Sign up for Spotify</a>.
+                            </p>
+                        </form>
+
+                        <!-- Form 2: Sign Up / Register -->
+                        <form class="auth-form" id="registerForm" style="display:none;">
+                            <div class="auth-input-group">
+                                <label for="regEmailInput">What's your email?</label>
+                                <div class="auth-input-wrapper">
+                                    <i class="fa-regular fa-envelope input-icon"></i>
+                                    <input type="email" id="regEmailInput" placeholder="name@domain.com" autocomplete="email">
+                                </div>
+                                <span class="auth-input-hint">You will need to confirm this email address.</span>
+                            </div>
+
+                            <div class="auth-input-group">
+                                <label for="regPasswordInput">Create a password</label>
+                                <div class="auth-input-wrapper">
+                                    <i class="fa-solid fa-lock input-icon"></i>
+                                    <input type="password" id="regPasswordInput" placeholder="Create a password" autocomplete="new-password">
+                                    <button type="button" class="toggle-password-btn" id="toggleRegPass" title="Toggle password visibility">
+                                        <i class="fa-regular fa-eye"></i>
+                                    </button>
+                                </div>
+                                <span class="auth-input-hint">Use at least 6 characters.</span>
+                            </div>
+
+                            <div class="auth-input-group">
+                                <label for="regNameInput">What should we call you?</label>
+                                <div class="auth-input-wrapper">
+                                    <i class="fa-regular fa-user input-icon"></i>
+                                    <input type="text" id="regNameInput" placeholder="Profile display name" autocomplete="name">
+                                </div>
+                                <span class="auth-input-hint">This appears on your profile and public playlists.</span>
+                            </div>
+
+                            <div class="auth-input-row">
+                                <div class="auth-input-group" style="flex:1;">
+                                    <label for="regBirthYear">Birth year</label>
+                                    <input type="number" id="regBirthYear" class="auth-input-simple" placeholder="YYYY" min="1930" max="2020" value="2000">
+                                </div>
+                                <div class="auth-input-group" style="flex:1;">
+                                    <label for="regGenderSelect">Gender</label>
+                                    <select id="regGenderSelect" class="auth-input-simple">
+                                        <option value="prefer_not">Prefer not to say</option>
+                                        <option value="nonbinary">Non-binary</option>
+                                        <option value="female">Female</option>
+                                        <option value="male">Male</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="auth-terms-box">
+                                <label class="remember-me-label">
+                                    <input type="checkbox" id="termsCheck" checked>
+                                    <span>I agree to Spotify's Terms of Use and Privacy Policy.</span>
+                                </label>
+                            </div>
+
+                            <button type="submit" class="badge auth-submit-btn" id="registerSubmitBtn">Sign Up</button>
+
+                            <p class="auth-switch-text">
+                                Already have an account? <a href="#" id="switchToLoginPrompt">Log in here</a>.
+                            </p>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- ===== SPOTIFY FOOTER ===== -->
+                <footer class="spotify-footer">
+                    <div class="footer-top-section">
+                        <div class="footer-nav-columns">
+                            <div class="footer-column">
+                                <p class="footer-col-title">Company</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="about.html" class="footer-link">About</a></li>
+                                    <li><a href="jobs.html" class="footer-link">Jobs</a></li>
+                                    <li><a href="for-the-record.html" class="footer-link">For the Record</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Communities</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="for-artists.html" class="footer-link">For Artists</a></li>
+                                    <li><a href="for-creators.html" class="footer-link">For Creators</a></li>
+                                    <li><a href="for-authors.html" class="footer-link">For Authors</a></li>
+                                    <li><a href="developers.html" class="footer-link">Developers</a></li>
+                                    <li><a href="advertising.html" class="footer-link">Advertising</a></li>
+                                    <li><a href="investors.html" class="footer-link">Investors</a></li>
+                                    <li><a href="vendors.html" class="footer-link">Vendors</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Useful links</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="support.html" class="footer-link">Support</a></li>
+                                    <li><a href="free-mobile-app.html" class="footer-link">Free Mobile App</a></li>
+                                    <li><a href="popular-by-country.html" class="footer-link">Popular by Country</a></li>
+                                    <li><a href="top-song-lyrics.html" class="footer-link">Top Song Lyrics</a></li>
+                                    <li><a href="import-your-music.html" class="footer-link">Import your music</a></li>
+                                </ul>
+                            </div>
+
+                            <div class="footer-column">
+                                <p class="footer-col-title">Spotify Plans</p>
+                                <ul class="footer-col-links">
+                                    <li><a href="premium-standard.html" class="footer-link">Premium Standard</a></li>
+                                    <li><a href="premium-platinum.html" class="footer-link">Premium Platinum</a></li>
+                                    <li><a href="premium-student.html" class="footer-link">Premium Student</a></li>
+                                    <li><a href="spotify-free.html" class="footer-link">Spotify Free</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="footer-social-links">
+                            <a href="https://instagram.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Instagram" title="Instagram">
+                                <i class="fa-brands fa-instagram"></i>
+                            </a>
+                            <a href="https://twitter.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Twitter" title="Twitter / X">
+                                <i class="fa-brands fa-x-twitter"></i>
+                            </a>
+                            <a href="https://facebook.com/spotify" target="_blank" rel="noopener noreferrer" class="social-icon-btn" aria-label="Facebook" title="Facebook">
+                                <i class="fa-brands fa-facebook-f"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="footer-divider-line"></div>
+
+                    <div class="footer-bottom-section">
+                        <p class="footer-copyright">© 2026 Spotify AB</p>
+                    </div>
+                </footer>
+            </div>
+
+            <!-- ===== PAGE: INFO / FOOTER PAGES (SPA CONTAINER) ===== -->
+            <div class="page" id="pageInfo" style="display:none;"></div>
+        </div>
+
+        <!-- ========== RIGHT SIDEBAR (SLIDING RAIL & EXPANDED PANEL) ========== -->
+        <div class="right-sidebar collapsed" id="rightSidebar">
+            <!-- Draggable Left Sash to Slide / Resize Window -->
+            <div class="right-sidebar-slide-sash" id="rightSidebarSlideSash" title="Drag to slide window"></div>
+
+            <!-- 1. Collapsed Rail View (Matches User Screenshot 2) -->
+            <div class="right-sidebar-rail" id="rightSidebarRail" title="Now playing view">
+                <button class="rail-expand-btn" id="railExpandBtn" title="Now playing view" aria-label="Expand right sidebar">
+                    <i class="fa-solid fa-chevron-left"></i>
+                    <span class="custom-tooltip">Now playing view</span>
+                </button>
+            </div>
+
+            <!-- 2. Expanded Panel View (Matches User Screenshot 1) -->
+            <div class="right-sidebar-expanded-content" id="rightSidebarExpanded">
+                <div class="right-sidebar-header">
+                    <button class="right-sidebar-icon-btn" id="closeRightSidebarBtn" title="Collapse sidebar">
+                        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M1 3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3zm1.5 0v10a.5.5 0 0 0 .5.5H13a.5.5 0 0 0 .5-.5V3a.5.5 0 0 0-.5-.5H3a.5.5 0 0 0-.5.5zm8 2.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zM5.354 5.646a.5.5 0 1 0-.708.708L6.293 8l-1.647 1.646a.5.5 0 0 0 .708.708l2-2a.5.5 0 0 0 0-.708l-2-2z"/>
+                        </svg>
+                    </button>
+                    <span class="right-sidebar-header-title" id="rightSidebarHeaderTitle">Now playing</span>
+                    <div style="width:36px;"></div>
+                </div>
+
+                <!-- Empty State: Matches User Screenshot -->
+                <div class="right-sidebar-empty" id="rightSidebarEmpty">
+                    <h2 class="right-sidebar-title">Find something to play</h2>
+                    <button class="badge search-pill-btn" id="rightSidebarSearchBtn">Search</button>
+                </div>
+
+                <!-- Active Now Playing Content -->
+                <div class="right-sidebar-content" id="rightSidebarContent" style="display:none;">
+                    <div class="now-playing-cover-wrapper">
+                        <img src="./assesst/card1img.jpeg" id="rightSidebarCover" alt="Cover" class="now-playing-large-cover">
+                    </div>
+                    <div class="now-playing-meta">
+                        <div class="now-playing-titles">
+                            <h3 class="now-playing-track-title" id="rightSidebarTrackTitle">Top 50 - Global</h3>
+                            <p class="now-playing-track-artist" id="rightSidebarTrackArtist">Spotify Charts</p>
+                        </div>
+                        <i class="fa-regular fa-heart now-playing-like-btn" id="rightSidebarLikeBtn" title="Save to Your Library"></i>
+                    </div>
+
+                    <!-- About the Artist Card -->
+                    <div class="about-artist-card" id="rightSidebarArtistCard">
+                        <div class="about-artist-header">
+                            <img src="./assesst/card1img.jpeg" id="rightSidebarArtistImg" class="about-artist-avatar" alt="Artist">
+                            <div class="about-artist-info">
+                                <h4>About the artist</h4>
+                                <span id="rightSidebarArtistName">Spotify Charts</span>
+                            </div>
+                        </div>
+                        <p class="about-artist-bio" id="rightSidebarArtistBio">Your daily update of the most played tracks right now.</p>
+                        <div class="about-artist-footer">
+                            <span id="rightSidebarMonthlyListeners">626,892,110 monthly listeners</span>
+                            <button class="badge dark-badge" id="rightSidebarFollowBtn">Follow</button>
+                        </div>
+                    </div>
+
+                    <!-- Next in Queue Preview -->
+                    <div class="right-sidebar-queue-box">
+                        <div class="queue-box-header">
+                            <span class="queue-title">Next in queue</span>
+                            <button class="queue-open-link" id="rightSidebarOpenQueueBtn">Open queue</button>
+                        </div>
+                        <div class="queue-next-track" id="rightSidebarNextTrack">
+                            <img src="./assesst/card2img.jpeg" id="rightSidebarNextImg" alt="Next">
+                            <div class="queue-next-meta">
+                                <span class="queue-next-name" id="rightSidebarNextName">Daily Mix 1</span>
+                                <span class="queue-next-artist" id="rightSidebarNextArtist">Spotify</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== MUSIC PLAYER BAR ========== -->
+        <div class="music-player">
+            <div class="album" id="playerAlbumSection" title="Click to view now playing screen" style="cursor:pointer;">
+                <img src="./assesst/card1img.jpeg" class="album-img" id="albumArt" alt="Album">
+                <div class="album-info">
+                    <span class="album-title" id="trackTitle">Top 50 - Global</span>
+                    <span class="album-artist" id="trackArtist">Spotify Charts</span>
+                </div>
+                <i class="fa-regular fa-heart like-icon" id="likeBtn" title="Save to Your Library"></i>
+            </div>
+            <div class="player">
+                <div class="player-controls">
+                    <img src="./assesst/player_icon1.png" class="player-control-icon" id="shuffleBtn" title="Shuffle">
+                    <img src="./assesst/player_icon2.png" class="player-control-icon" id="prevBtn" title="Previous">
+                    <button class="main-play-btn" id="playPauseBtn" title="Play">
+                        <i class="fa-solid fa-play" id="playPauseIcon"></i>
+                    </button>
+                    <img src="./assesst/player_icon4.png" class="player-control-icon" id="nextBtn" title="Next">
+                    <img src="./assesst/player_icon5.png" class="player-control-icon" id="repeatBtn" title="Repeat">
+                </div>
+                <div class="playback-bar">
+                    <span class="curr-time" id="currTime">0:00</span>
+                    <input type="range" min="0" max="100" value="0" class="progress-bar" id="progressBar" step="0.1">
+                    <span class="tot-time" id="totTime">3:33</span>
+                </div>
+            </div>
+            <div class="controls">
+                <i class="fa-solid fa-volume-high volume-icon" id="volumeIcon" title="Mute"></i>
+                <input type="range" min="0" max="100" value="75" class="volume-bar" id="volumeBar">
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div class="modal-overlay" id="editProfileModal" style="display:none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Profile details</h3>
+                <button class="modal-close" id="closeProfileModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="edit-profile-body">
+                <div class="avatar-edit-box">
+                    <img src="./assesst/logo.png" id="avatarPreview" alt="Profile avatar">
+                    <div class="avatar-overlay-label"><i class="fa-solid fa-camera"></i> Change</div>
+                </div>
+                <div class="profile-inputs">
+                    <div class="form-group">
+                        <label for="profileNameInput">Name</label>
+                        <input type="text" id="profileNameInput" placeholder="Display name" maxlength="40" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="profileBioInput">Bio</label>
+                        <textarea id="profileBioInput" placeholder="Add an optional bio" rows="3" maxlength="150"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="badge dark-badge" id="cancelProfileBtn">Cancel</button>
+                <button class="badge" id="saveProfileBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Premium Subscribe / Checkout Modal -->
+    <div class="modal-overlay" id="subscribeModal" style="display:none;">
+        <div class="modal-card premium-checkout-card">
+            <div class="modal-header">
+                <h3 id="checkoutPlanTitle">Get Spotify Premium</h3>
+                <button class="modal-close" id="closeCheckoutModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="checkout-body">
+                <div class="checkout-badge-row">
+                    <span class="plan-price-tag" id="checkoutPlanPrice">$10.99 / month</span>
+                    <span class="plan-promo-tag" id="checkoutPromoTag">1 month free trial</span>
+                </div>
+                <p id="checkoutPlanDesc">Ad-free music listening, play offline, on-demand playback.</p>
+                <div class="checkout-payment-box">
+                    <label style="font-size:0.82rem;font-weight:600;color:#b3b3b3;margin-bottom:0.4rem;display:block;">Select Payment Method (Simulated)</label>
+                    <div class="payment-method-options">
+                        <label class="payment-radio selected">
+                            <input type="radio" name="payment" checked>
+                            <i class="fa-brands fa-cc-visa"></i> Visa •••• 4242
+                        </label>
+                        <label class="payment-radio">
+                            <input type="radio" name="payment">
+                            <i class="fa-brands fa-paypal"></i> PayPal
+                        </label>
+                    </div>
+                </div>
+                <div class="checkout-terms">
+                    By confirming, you authorize recurring payments. Cancel anytime in your Account settings.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="badge dark-badge" id="cancelCheckoutBtn">Cancel</button>
+                <button class="badge create-btn" id="confirmSubscribeBtn">Start 1 Month Free</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Language Selector Modal -->
+    <div class="modal-overlay" id="langModalOverlay" style="display:none;">
+        <div class="modal-card lang-modal-card">
+            <div class="modal-header">
+                <h3>Choose a language</h3>
+                <button class="modal-close" id="closeLangModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="checkout-body" style="padding:1.2rem 1.6rem 1.6rem;">
+                <p style="color:#a7a7a7;font-size:0.86rem;margin:0 0 1rem;line-height:1.4;">This updates what you read on Spotify and adjusts region settings.</p>
+                <div class="lang-grid">
+                    <button class="lang-item active-lang" data-lang="English"><strong>English</strong><span>English</span></button>
+                    <button class="lang-item" data-lang="Español"><strong>Español</strong><span>Spanish</span></button>
+                    <button class="lang-item" data-lang="Français"><strong>Français</strong><span>French</span></button>
+                    <button class="lang-item" data-lang="Deutsch"><strong>Deutsch</strong><span>German</span></button>
+                    <button class="lang-item" data-lang="Italiano"><strong>Italiano</strong><span>Italian</span></button>
+                    <button class="lang-item" data-lang="Português"><strong>Português</strong><span>Portuguese (Brazil)</span></button>
+                    <button class="lang-item" data-lang="हिन्दी"><strong>हिन्दी</strong><span>Hindi</span></button>
+                    <button class="lang-item" data-lang="日本語"><strong>日本語</strong><span>Japanese</span></button>
+                    <button class="lang-item" data-lang="한국어"><strong>한국어</strong><span>Korean</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="./bundle.js"></script>
 </body>
 </html>

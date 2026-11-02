@@ -1,12 +1,19 @@
 # Spotify Full-Stack Web Application
 
-A full-featured Spotify Clone built with **HTML5, CSS3, JavaScript (Web Audio API)** on the frontend, and **Node.js + Express.js + EJS Templates** on the backend.
+A full-featured Spotify Clone built with **HTML5, CSS3, JavaScript (Web Audio API)** on the frontend, **TypeScript** type definitions and services, and **Node.js + Express.js + EJS Templates** on the backend.
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Start the Express + EJS Server
+### 1. Compile TypeScript
+
+```bash
+npm run build:ts
+```
+*(Or check types without emitting: `npm run typecheck`)*
+
+### 2. Start the Express + EJS Server
 
 ```bash
 npm start
@@ -29,6 +36,12 @@ Open `http://localhost:5000` in your web browser. The server renders dynamic **E
 
 ```text
 05_Spotify_Clone/
+├── src/                          # TypeScript Source Code
+│   ├── types/index.ts            # Domain interfaces (Track, Playlist, User, ApiResponse)
+│   ├── services/api.ts           # Type-safe generic REST API client
+│   ├── services/audio.ts         # Type-safe Web Audio polyphonic synthesizer
+│   └── index.ts                  # Master library export
+├── dist/                         # Compiled JavaScript & .d.ts Type Declarations
 ├── views/                        # EJS Server-Side Rendered Templates
 │   ├── partials/
 │   │   ├── head.ejs              # Meta tags, fonts, styles, favicon

@@ -65,6 +65,7 @@ app.use('/api/playlists', require('./routes/playlistRoutes'));
 app.use('/api/user', require('./routes/userRoutes'));
 app.use('/api/search', require('./routes/searchRoutes'));
 app.use('/api/podcasts', require('./routes/podcastRoutes'));
+app.use('/api/music', require('./routes/musicApiRoutes'));
 
 // =========================================================================
 // EJS DYNAMIC SERVER-SIDE RENDERED (SSR) ROUTES
@@ -77,6 +78,19 @@ app.get('/', (req, res) => {
   const user = data.users && data.users[0] ? data.users[0] : null;
   const playlists = store.getPlaylists(user ? user.id : 1);
   res.render('index', { tracks, user, playlists });
+});
+
+// Music / Now Playing View
+app.get('/music', (req, res) => {
+  const tracks = store.getTracks();
+  const data = store.readData();
+  const user = data.users && data.users[0] ? data.users[0] : null;
+  const playlists = store.getPlaylists(user ? user.id : 1);
+  res.render('index', { tracks, user, playlists });
+});
+
+app.get('/music.html', (req, res) => {
+  res.redirect('/html/music.html');
 });
 
 // Search & Browse View

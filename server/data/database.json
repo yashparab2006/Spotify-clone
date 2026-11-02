@@ -200,13 +200,59 @@
       "cover": "/assesst/card1img.jpeg",
       "songs": [],
       "createdAt": "2026-11-02T14:54:03.580Z"
+    },
+    {
+      "id": "1434f526-8550-45d2-a56f-fae72c437589",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-02T15:03:44.898Z"
+    },
+    {
+      "id": "3ccd55df-06e6-49ed-85aa-c4260c8ebfa0",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-02T15:30:40.614Z"
+    },
+    {
+      "id": "0a1e4ef0-eab9-420a-b339-01e29346b58c",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-02T15:31:18.315Z"
+    },
+    {
+      "id": "083a95bd-6ee9-4325-915d-ee1ffa307e2d",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-02T15:32:09.924Z"
+    },
+    {
+      "id": "a4df1ca5-aa65-46b2-ba58-f525078b7d4f",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-02T15:46:23.138Z"
     }
   ],
   "likes": {
     "1": [
       1,
       2,
-      5
+      5,
+      6
     ],
     "2": [
       2

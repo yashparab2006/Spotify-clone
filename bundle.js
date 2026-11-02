@@ -198,6 +198,172 @@ const spotifyApi = new SpotifyApiClient();
 
 
 
+/**
+ * Music API Service - Audius API Integration
+ * Decoupled API service for fetching real songs, trending music, search, and audio stream URLs.
+ */
+
+const AUDIUS_APP_NAME = 'SPOTIFY_CLONE';
+const AUDIUS_HOST = 'https://api.audius.co/v1';
+const DEFAULT_ARTWORK = './assesst/card1img.jpeg';
+
+class MusicApiService {
+    constructor() {
+        this.cache = new Map();
+    }
+
+    normalizeTrack(item) {
+        if (!item) return null;
+        const artwork = item.artwork || {};
+        const artworkUrl = artwork['480x480'] || artwork['150x150'] || artwork['1000x1000'] || item.img || DEFAULT_ARTWORK;
+        const streamUrl = item.streamUrl || `${AUDIUS_HOST}/tracks/${item.id}/stream?app_name=${AUDIUS_APP_NAME}`;
+
+        return {
+            id: String(item.id),
+            title: item.title || 'Untitled Track',
+            artist: (item.user && (item.user.name || item.user.handle)) || item.artist || 'Unknown Artist',
+            artistId: item.user ? item.user.id : (item.artistId || null),
+            img: artworkUrl,
+            duration: item.duration || 180,
+            streamUrl: streamUrl,
+            genre: item.genre || 'Trending',
+            source: item.source || 'audius'
+        };
+    }
+
+    async getTrending(limit = 12) {
+        const cacheKey = `trending_${limit}`;
+        if (this.cache.has(cacheKey)) {
+            return this.cache.get(cacheKey);
+        }
+
+        // Try Express backend proxy first
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 4000);
+            const res = await fetch(`/api/music/trending?limit=${limit}`, { signal: controller.signal });
+            clearTimeout(timeout);
+            if (res.ok) {
+                const json = await res.json();
+                if (json.success && Array.isArray(json.tracks) && json.tracks.length > 0) {
+                    const tracks = json.tracks.map(t => this.normalizeTrack(t));
+                    this.cache.set(cacheKey, tracks);
+                    return tracks;
+                }
+            }
+        } catch (e) {
+            // Backend unreachable, fallback to direct Audius
+        }
+
+        // Direct Audius Gateway
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch(`${AUDIUS_HOST}/tracks/trending?app_name=${AUDIUS_APP_NAME}&limit=${limit}`, { signal: controller.signal });
+            clearTimeout(timeout);
+            if (res.ok) {
+                const json = await res.json();
+                if (json.data && Array.isArray(json.data)) {
+                    const tracks = json.data.map(t => this.normalizeTrack(t));
+                    this.cache.set(cacheKey, tracks);
+                    return tracks;
+                }
+            }
+        } catch (e) {
+            console.warn('Direct Audius trending fetch failed, using fallback tracks:', e);
+        }
+
+        // Fallback to local playlist
+        return typeof playlist !== 'undefined' ? playlist : [];
+    }
+
+    async search(query, limit = 15) {
+        const q = (query || '').trim();
+        if (!q) return [];
+
+        const cacheKey = `search_${q.toLowerCase()}`;
+        if (this.cache.has(cacheKey)) {
+            return this.cache.get(cacheKey);
+        }
+
+        // Try Express backend proxy first
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 4000);
+            const res = await fetch(`/api/music/search?q=${encodeURIComponent(q)}&limit=${limit}`, { signal: controller.signal });
+            clearTimeout(timeout);
+            if (res.ok) {
+                const json = await res.json();
+                if (json.success && Array.isArray(json.tracks)) {
+                    const tracks = json.tracks.map(t => this.normalizeTrack(t));
+                    this.cache.set(cacheKey, tracks);
+                    return tracks;
+                }
+            }
+        } catch (e) {
+            // Backend unreachable, fallback to direct Audius
+        }
+
+        // Direct Audius Gateway
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch(`${AUDIUS_HOST}/tracks/search?query=${encodeURIComponent(q)}&app_name=${AUDIUS_APP_NAME}&limit=${limit}`, { signal: controller.signal });
+            clearTimeout(timeout);
+            if (res.ok) {
+                const json = await res.json();
+                if (json.data && Array.isArray(json.data)) {
+                    const tracks = json.data.map(t => this.normalizeTrack(t));
+                    this.cache.set(cacheKey, tracks);
+                    return tracks;
+                }
+            }
+        } catch (e) {
+            console.warn('Direct Audius search failed, falling back:', e);
+        }
+
+        // Fallback to in-memory filter
+        if (typeof playlist !== 'undefined') {
+            const lower = q.toLowerCase();
+            return playlist.filter(t =>
+                t.title.toLowerCase().includes(lower) ||
+                t.artist.toLowerCase().includes(lower) ||
+                (t.genre && t.genre.toLowerCase().includes(lower))
+            );
+        }
+
+        return [];
+    }
+
+    async getArtist(artistId) {
+        if (!artistId) return null;
+        try {
+            const res = await fetch(`${AUDIUS_HOST}/users/${artistId}?app_name=${AUDIUS_APP_NAME}`);
+            if (res.ok) {
+                const json = await res.json();
+                if (json.data) {
+                    const u = json.data;
+                    return {
+                        id: u.id,
+                        name: u.name,
+                        handle: u.handle,
+                        bio: u.bio,
+                        profilePicture: u.profile_picture ? u.profile_picture['480x480'] : null,
+                        followers: u.follower_count || 0
+                    };
+                }
+            }
+        } catch (e) {
+            console.warn('Artist details fetch failed:', e);
+        }
+        return null;
+    }
+}
+
+const musicApi = new MusicApiService();
+
+
+
 const playlist = [
     {
         id: 1,
@@ -205,6 +371,7 @@ const playlist = [
         artist: "Spotify Charts",
         img: "./assesst/card1img.jpeg",
         duration: 213,
+        streamUrl: "https://api.audius.co/v1/tracks/W08NKdZ/stream?app_name=SPOTIFY_CLONE",
         rootFreq: 261.63,
         chords: [[261.63, 329.63, 392.00], [220.00, 261.63, 329.63], [174.61, 220.00, 261.63], [196.00, 246.94, 293.66]],
         tempo: 104,
@@ -222,6 +389,7 @@ const playlist = [
         artist: "Darshan Raval",
         img: "./assesst/card2img.jpeg",
         duration: 195,
+        streamUrl: "https://api.audius.co/v1/tracks/r70GlbZ/stream?app_name=SPOTIFY_CLONE",
         rootFreq: 293.66,
         chords: [[293.66, 369.99, 440.00], [246.94, 293.66, 369.99], [196.00, 246.94, 293.66], [220.00, 277.18, 329.63]],
         tempo: 92,
@@ -238,6 +406,7 @@ const playlist = [
         artist: "Rahat Fateh Ali Khan",
         img: "./assesst/card3img.jpeg",
         duration: 248,
+        streamUrl: "https://api.audius.co/v1/tracks/zz0MEGP/stream?app_name=SPOTIFY_CLONE",
         rootFreq: 220.00,
         chords: [[220.00, 261.63, 329.63], [174.61, 220.00, 261.63], [196.00, 246.94, 293.66], [164.81, 207.65, 246.94]],
         tempo: 78,
@@ -254,6 +423,7 @@ const playlist = [
         artist: "Anirudh Ravichander, Thalapathy Vijay",
         img: "./assesst/card4img.jpeg",
         duration: 188,
+        streamUrl: "https://api.audius.co/v1/tracks/87GrbyW/stream?app_name=SPOTIFY_CLONE",
         rootFreq: 329.63,
         chords: [[164.81, 196.00, 246.94], [174.61, 220.00, 261.63], [196.00, 246.94, 293.66], [164.81, 196.00, 246.94]],
         tempo: 128,
@@ -270,6 +440,7 @@ const playlist = [
         artist: "The Weeknd, Daft Punk",
         img: "./assesst/card3img.jpeg",
         duration: 230,
+        streamUrl: "https://api.audius.co/v1/tracks/WYKbAE6/stream?app_name=SPOTIFY_CLONE",
         rootFreq: 246.94,
         chords: [[246.94, 293.66, 369.99], [220.00, 261.63, 329.63], [196.00, 246.94, 293.66], [246.94, 293.66, 369.99]],
         tempo: 112,
@@ -286,6 +457,7 @@ const playlist = [
         artist: "The Weeknd",
         img: "./assesst/card4img.jpeg",
         duration: 200,
+        streamUrl: "https://api.audius.co/v1/tracks/y8rNVYP/stream?app_name=SPOTIFY_CLONE",
         rootFreq: 349.23,
         chords: [[349.23, 440.00, 523.25], [293.66, 349.23, 440.00], [261.63, 329.63, 392.00], [196.00, 246.94, 293.66]],
         tempo: 130,
@@ -302,6 +474,7 @@ const playlist = [
         artist: "Weekly Music Charts",
         img: "./assesst/card5img.jpeg",
         duration: 222,
+        streamUrl: "https://api.audius.co/v1/tracks/Ma6qb3x/stream?app_name=SPOTIFY_CLONE",
         rootFreq: 261.63,
         chords: [[261.63, 329.63, 392.00], [196.00, 246.94, 293.66], [220.00, 261.63, 329.63], [174.61, 220.00, 261.63]],
         tempo: 100,
@@ -317,6 +490,7 @@ const playlist = [
         artist: "Weekly Music Charts - India",
         img: "./assesst/card6img.jpeg",
         duration: 175,
+        streamUrl: "https://api.audius.co/v1/tracks/7MWpzKW/stream?app_name=SPOTIFY_CLONE",
         rootFreq: 293.66,
         chords: [[293.66, 369.99, 440.00], [220.00, 261.63, 329.63], [196.00, 246.94, 293.66], [220.00, 277.18, 329.63]],
         tempo: 108,
@@ -332,6 +506,7 @@ const playlist = [
         artist: "Spotify Curated",
         img: "./assesst/card1img.jpeg",
         duration: 205,
+        streamUrl: "https://api.audius.co/v1/tracks/XkZ4wW7/stream?app_name=SPOTIFY_CLONE",
         rootFreq: 220.00,
         chords: [[220.00, 261.63, 329.63], [174.61, 220.00, 261.63], [261.63, 329.63, 392.00], [196.00, 246.94, 293.66]],
         tempo: 84,
@@ -2678,6 +2853,7 @@ curl -X GET "https://api.spotify.com/v1/me/player/currently-playing" \\
 
 
 
+
 function runApp() {
     // =========================================================================
     // STATE
@@ -2728,7 +2904,7 @@ function runApp() {
                 spotifyApi.getTracks().then(res => {
                     if (res && res.data && Array.isArray(res.data.tracks) && res.data.tracks.length > 0) {
                         res.data.tracks.forEach(serverTrack => {
-                            const local = playlist.find(t => t.id === serverTrack.id);
+                            const local = playlist.find(t => String(t.id) === String(serverTrack.id));
                             if (local) {
                                 Object.assign(local, serverTrack);
                             } else {
@@ -2769,33 +2945,129 @@ function runApp() {
     }
 
     // =========================================================================
-    // AUDIO ENGINE (Web Audio API)
+    // AUDIO ENGINE (HTML5 Audio + Web Audio Spectrum Analyser)
     // =========================================================================
     let audioCtx = null;
     let masterGain = null;
     let analyserNode = null;
+    let audioElement = null;
+    let audioSourceNode = null;
     let synthTimer = null;
     let chordIdx = 0;
+    let isBuffering = false;
 
     function initAudio() {
         if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            masterGain = audioCtx.createGain();
-            masterGain.gain.setValueAtTime(isMuted ? 0 : volume * 0.3, audioCtx.currentTime);
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                masterGain = audioCtx.createGain();
+                masterGain.gain.setValueAtTime(isMuted ? 0 : volume * 0.3, audioCtx.currentTime);
 
-            // Audio Spectrum Analyser Node
-            analyserNode = audioCtx.createAnalyser();
-            analyserNode.fftSize = 128;
-            analyserNode.smoothingTimeConstant = 0.82;
+                // Audio Spectrum Analyser Node
+                analyserNode = audioCtx.createAnalyser();
+                analyserNode.fftSize = 128;
+                analyserNode.smoothingTimeConstant = 0.82;
 
-            masterGain.connect(analyserNode);
-            analyserNode.connect(audioCtx.destination);
+                masterGain.connect(analyserNode);
+                analyserNode.connect(audioCtx.destination);
 
-            if (musicModule && musicModule.setAnalyser) {
-                musicModule.setAnalyser(analyserNode);
+                if (musicModule && musicModule.setAnalyser) {
+                    musicModule.setAnalyser(analyserNode);
+                }
+            } catch (e) {
+                console.warn("AudioContext init warning:", e);
             }
         }
-        if (audioCtx.state === "suspended") audioCtx.resume();
+        if (audioCtx && audioCtx.state === "suspended") {
+            audioCtx.resume().catch(() => {});
+        }
+
+        if (!audioElement) {
+            audioElement = new Audio();
+            audioElement.preload = "auto";
+            audioElement.volume = isMuted ? 0 : volume;
+
+            // Audio Element Events
+            audioElement.addEventListener("play", () => {
+                isPlaying = true;
+                isBuffering = false;
+                playPauseIcon.className = "fa-solid fa-pause";
+                playPauseBtn.classList.add("playing");
+                if (musicModule) musicModule.updatePlayState(true);
+            });
+
+            audioElement.addEventListener("pause", () => {
+                if (!isBuffering) {
+                    isPlaying = false;
+                    playPauseIcon.className = "fa-solid fa-play";
+                    playPauseBtn.classList.remove("playing");
+                    if (musicModule) musicModule.updatePlayState(false);
+                }
+            });
+
+            audioElement.addEventListener("waiting", () => {
+                isBuffering = true;
+                playPauseIcon.className = "fa-solid fa-circle-notch fa-spin";
+            });
+
+            audioElement.addEventListener("playing", () => {
+                isBuffering = false;
+                isPlaying = true;
+                playPauseIcon.className = "fa-solid fa-pause";
+                playPauseBtn.classList.add("playing");
+                if (musicModule) musicModule.updatePlayState(true);
+            });
+
+            audioElement.addEventListener("timeupdate", () => {
+                if (!audioElement) return;
+                const cur = audioElement.currentTime || 0;
+                const dur = (audioElement.duration && !isNaN(audioElement.duration) && isFinite(audioElement.duration))
+                    ? audioElement.duration
+                    : (playlist[currentTrackIndex]?.duration || 180);
+
+                currentTime = cur;
+                currTimeEl.textContent = fmt(cur);
+                const pct = (cur / dur) * 100;
+                progressBar.value = isFinite(pct) ? pct : 0;
+                updateSliderBg(progressBar, progressBar.value);
+
+                const t = playlist[currentTrackIndex];
+                if (musicModule && t) {
+                    musicModule.syncLyricsWithTime(cur, dur, t.lyrics ? t.lyrics.length : 0);
+                }
+            });
+
+            audioElement.addEventListener("durationchange", () => {
+                if (audioElement && audioElement.duration && !isNaN(audioElement.duration) && isFinite(audioElement.duration)) {
+                    totTimeEl.textContent = fmt(audioElement.duration);
+                    if (playlist[currentTrackIndex]) {
+                        playlist[currentTrackIndex].duration = Math.round(audioElement.duration);
+                    }
+                }
+            });
+
+            audioElement.addEventListener("ended", () => {
+                if (repeatMode === "one") {
+                    audioElement.currentTime = 0;
+                    audioElement.play().catch(() => {});
+                } else if (repeatMode === "all" || isShuffle || currentTrackIndex < playlist.length - 1) {
+                    nextTrack();
+                } else {
+                    pauseTrack();
+                    audioElement.currentTime = 0;
+                    progressBar.value = 0;
+                    currTimeEl.textContent = "0:00";
+                    updateSliderBg(progressBar, 0);
+                }
+            });
+
+            audioElement.addEventListener("error", (e) => {
+                console.warn("Audio element stream notice, falling back to local audio synthesis:", e);
+                isBuffering = false;
+                startSynth();
+                startProgress();
+            });
+        }
     }
 
     function playChord(notes, dur = 1.5) {
@@ -2984,7 +3256,20 @@ function runApp() {
                 accessibility: "accessibility.html"
             };
             if (pageFileMap[page]) {
-                window.location.href = pageFileMap[page];
+                const target = pageFileMap[page];
+                if (window.location.protocol.startsWith("http")) {
+                    if (window.location.pathname.startsWith("/html/")) {
+                        window.location.href = "/html/" + target;
+                    } else {
+                        window.location.href = "/" + page;
+                    }
+                } else {
+                    if (window.location.pathname.includes("/html/")) {
+                        window.location.href = target;
+                    } else {
+                        window.location.href = "html/" + target;
+                    }
+                }
             }
         }
     }
@@ -3510,10 +3795,11 @@ function runApp() {
     // HOME PAGE - Render cards
     // =========================================================================
     function createCardHTML(track) {
+        const art = track.img || "./assesst/card1img.jpeg";
         return `
         <div class="card" data-song-id="${track.id}">
             <div class="card-img-wrapper">
-                <img src="${track.img}" class="card-img" alt="${track.title}">
+                <img src="${art}" class="card-img" alt="${track.title}" onerror="this.onerror=null;this.src='./assesst/card1img.jpeg';">
                 <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
             </div>
             <p class="card-title">${track.title}</p>
@@ -3525,9 +3811,9 @@ function runApp() {
         const recent = $("recentlyPlayedCards");
         const trending = $("trendingCards");
         const featured = $("featuredCards");
-        recent.innerHTML = playlist.slice(0, 3).map(createCardHTML).join("");
-        trending.innerHTML = playlist.slice(2, 7).map(createCardHTML).join("");
-        featured.innerHTML = playlist.slice(6, 9).concat(playlist.slice(0, 2)).map(createCardHTML).join("");
+        if (recent) recent.innerHTML = playlist.slice(0, 3).map(createCardHTML).join("");
+        if (trending) trending.innerHTML = playlist.slice(2, 7).map(createCardHTML).join("");
+        if (featured) featured.innerHTML = playlist.slice(7, 12).concat(playlist.slice(0, 2)).map(createCardHTML).join("");
         bindCardClicks();
     }
 
@@ -3535,8 +3821,8 @@ function runApp() {
     function bindCardClicks() {
         $$(".card:not(.playlist-card):not(.podcast-show-card)").forEach(card => {
             card.addEventListener("click", () => {
-                const id = parseInt(card.dataset.songId, 10);
-                const idx = playlist.findIndex(t => t.id === id);
+                const id = card.dataset.songId;
+                const idx = playlist.findIndex(t => String(t.id) === String(id));
                 if (idx !== -1) {
                     if (idx === currentTrackIndex && isPlaying) {
                         navigate("music");
@@ -3597,7 +3883,7 @@ function runApp() {
     }
 
     async function doSearch(query) {
-        const q = query.trim().toLowerCase();
+        const q = (query || "").trim();
         if (!q) {
             $("searchDefault").style.display = "block";
             $("searchResults").style.display = "none";
@@ -3607,9 +3893,26 @@ function runApp() {
         }
         clearSearchBtn.style.display = "block";
 
+        // Show loading indicator
+        $("searchDefault").style.display = "none";
+        $("searchResults").style.display = "block";
+        $("noResults").style.display = "none";
+        $("searchResultCards").innerHTML = `
+            <div style="grid-column: 1 / -1; display:flex; align-items:center; justify-content:center; padding: 3rem; color: #1ed760; font-size: 1.1rem; gap: 0.8rem;">
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+                <span>Searching Audius music catalog for "${q}"...</span>
+            </div>
+        `;
+
         let matches = [];
-        // Query REST API /api/search?q=...
-        if (typeof spotifyApi !== "undefined") {
+        try {
+            matches = await musicApi.search(q, 16);
+        } catch (e) {
+            console.warn("Audius search error:", e);
+        }
+
+        // Query REST API /api/search?q=... as secondary fallback
+        if ((!matches || matches.length === 0) && typeof spotifyApi !== "undefined") {
             try {
                 const res = await spotifyApi.search(q);
                 if (res && res.data && res.data.results && Array.isArray(res.data.results.tracks) && res.data.results.tracks.length > 0) {
@@ -3618,22 +3921,34 @@ function runApp() {
             } catch (e) {}
         }
 
-        // Fallback to in-memory filter if REST API returned no items or offline
-        if (matches.length === 0) {
-            matches = playlist.filter(t =>
-                t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q) || (t.genre && t.genre.toLowerCase().includes(q))
-            );
-        }
-
-        $("searchDefault").style.display = "none";
-        if (matches.length > 0) {
+        // Add any found tracks into playlist queue
+        if (matches && matches.length > 0) {
+            matches.forEach(t => {
+                if (!playlist.some(p => String(p.id) === String(t.id))) {
+                    playlist.push(t);
+                }
+            });
             $("searchResults").style.display = "block";
             $("noResults").style.display = "none";
             $("searchResultCards").innerHTML = matches.map(createCardHTML).join("");
             bindCardClicks();
         } else {
-            $("searchResults").style.display = "none";
-            $("noResults").style.display = "block";
+            // Fallback to local playlist filter if offline
+            const lower = q.toLowerCase();
+            const localMatches = playlist.filter(t =>
+                t.title.toLowerCase().includes(lower) ||
+                t.artist.toLowerCase().includes(lower) ||
+                (t.genre && t.genre.toLowerCase().includes(lower))
+            );
+            if (localMatches.length > 0) {
+                $("searchResults").style.display = "block";
+                $("noResults").style.display = "none";
+                $("searchResultCards").innerHTML = localMatches.map(createCardHTML).join("");
+                bindCardClicks();
+            } else {
+                $("searchResults").style.display = "none";
+                $("noResults").style.display = "block";
+            }
         }
     }
 
@@ -3685,10 +4000,10 @@ function runApp() {
             return;
         }
         list.innerHTML = [...likedSongs].map(id => {
-            const t = playlist.find(s => s.id === id);
+            const t = playlist.find(s => String(s.id) === String(id));
             if (!t) return "";
             return `<div class="liked-song-row" data-song-id="${t.id}">
-                <img src="${t.img}" alt="${t.title}">
+                <img src="${t.img}" alt="${t.title}" onerror="this.onerror=null;this.src='./assesst/card1img.jpeg';">
                 <div class="song-info">
                     <span class="song-name">${t.title}</span>
                     <span class="song-artist">${t.artist}</span>
@@ -3698,7 +4013,7 @@ function runApp() {
         }).join("");
         $$(".liked-song-row").forEach(r => {
             r.addEventListener("click", () => {
-                const idx = playlist.findIndex(t => t.id === parseInt(r.dataset.songId, 10));
+                const idx = playlist.findIndex(t => String(t.id) === String(r.dataset.songId));
                 if (idx !== -1) {
                     loadTrack(idx, true);
                     navigate("music");
@@ -3715,11 +4030,11 @@ function runApp() {
         }
         container.innerHTML = userPlaylists.map(pl => {
             const coverImg = pl.songs.length > 0
-                ? playlist.find(t => t.id === pl.songs[0])?.img || "./assesst/card1img.jpeg"
+                ? playlist.find(t => String(t.id) === String(pl.songs[0]))?.img || "./assesst/card1img.jpeg"
                 : "./assesst/card1img.jpeg";
             return `<div class="card playlist-card" data-playlist-id="${pl.id}">
                 <div class="card-img-wrapper">
-                    <img src="${coverImg}" class="card-img" alt="${pl.name}">
+                    <img src="${coverImg}" class="card-img" alt="${pl.name}" onerror="this.onerror=null;this.src='./assesst/card1img.jpeg';">
                     <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
                 </div>
                 <p class="card-title">${pl.name}</p>
@@ -3728,7 +4043,7 @@ function runApp() {
         }).join("");
         $$(".playlist-card").forEach(card => {
             card.addEventListener("click", () => {
-                const plId = parseInt(card.dataset.playlistId, 10);
+                const plId = card.dataset.playlistId;
                 openPlaylistDetail(plId);
             });
         });
@@ -3913,29 +4228,29 @@ function runApp() {
     // =========================================================================
     function openPlaylistDetail(plId) {
         viewingPlaylistId = plId;
-        const pl = userPlaylists.find(p => p.id === plId);
+        const pl = userPlaylists.find(p => String(p.id) === String(plId));
         if (!pl) return;
 
         const coverImg = pl.songs.length > 0
-            ? playlist.find(t => t.id === pl.songs[0])?.img || "./assesst/card1img.jpeg"
+            ? playlist.find(t => String(t.id) === String(pl.songs[0]))?.img || "./assesst/card1img.jpeg"
             : "./assesst/card1img.jpeg";
 
         $("playlistDetailHeader").innerHTML = `
-            <img src="${coverImg}" alt="${pl.name}">
+            <img src="${coverImg}" alt="${pl.name}" onerror="this.onerror=null;this.src='./assesst/card1img.jpeg';">
             <div class="detail-info">
                 <p style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:#a7a7a7;margin:0 0 0.3rem">Playlist</p>
                 <h1>${pl.name}</h1>
                 ${pl.desc ? `<p style="margin:0.3rem 0 0.5rem">${pl.desc}</p>` : ""}
-                <p style="margin:0;">${pl.songs.length} song${pl.songs.length !== 1 ? "s" : ""} • ${fmt(pl.songs.reduce((sum, id) => sum + (playlist.find(t => t.id === id)?.duration || 0), 0))}</p>
+                <p style="margin:0;">${pl.songs.length} song${pl.songs.length !== 1 ? "s" : ""} • ${fmt(pl.songs.reduce((sum, id) => sum + (playlist.find(t => String(t.id) === String(id))?.duration || 0), 0))}</p>
             </div>`;
 
         $("playlistTrackList").innerHTML = pl.songs.map((songId, i) => {
-            const t = playlist.find(s => s.id === songId);
+            const t = playlist.find(s => String(s.id) === String(songId));
             if (!t) return "";
             return `<div class="track-row" data-song-id="${t.id}">
                 <span class="track-number">${i + 1}</span>
                 <i class="fa-solid fa-play track-play-icon"></i>
-                <img src="${t.img}" alt="${t.title}">
+                <img src="${t.img}" alt="${t.title}" onerror="this.onerror=null;this.src='./assesst/card1img.jpeg';">
                 <div class="track-info">
                     <span class="track-name">${t.title}</span>
                     <span class="track-artist">${t.artist}</span>
@@ -3946,7 +4261,7 @@ function runApp() {
 
         $$(".track-row").forEach(r => {
             r.addEventListener("click", () => {
-                const idx = playlist.findIndex(t => t.id === parseInt(r.dataset.songId, 10));
+                const idx = playlist.findIndex(t => String(t.id) === String(r.dataset.songId));
                 if (idx !== -1) {
                     loadTrack(idx, true);
                     navigate("music");
@@ -3957,7 +4272,7 @@ function runApp() {
         // Play All
         $("playAllBtn").onclick = () => {
             if (pl.songs.length > 0) {
-                const idx = playlist.findIndex(t => t.id === pl.songs[0]);
+                const idx = playlist.findIndex(t => String(t.id) === String(pl.songs[0]));
                 if (idx !== -1) {
                     loadTrack(idx, true);
                     navigate("music");
@@ -3969,7 +4284,7 @@ function runApp() {
         $("shufflePlaylistBtn").onclick = () => {
             if (pl.songs.length > 0) {
                 const randomId = pl.songs[Math.floor(Math.random() * pl.songs.length)];
-                const idx = playlist.findIndex(t => t.id === randomId);
+                const idx = playlist.findIndex(t => String(t.id) === String(randomId));
                 if (idx !== -1) {
                     isShuffle = true;
                     shuffleBtn.classList.add("active");
@@ -3989,16 +4304,16 @@ function runApp() {
         const container = $("sidebarPlaylists");
         container.innerHTML = userPlaylists.map(pl => {
             const coverImg = pl.songs.length > 0
-                ? playlist.find(t => t.id === pl.songs[0])?.img || "./assesst/card1img.jpeg"
+                ? playlist.find(t => String(t.id) === String(pl.songs[0]))?.img || "./assesst/card1img.jpeg"
                 : "./assesst/card1img.jpeg";
             return `<div class="sidebar-playlist-item" data-playlist-id="${pl.id}">
-                <img src="${coverImg}" alt="${pl.name}">
+                <img src="${coverImg}" alt="${pl.name}" onerror="this.onerror=null;this.src='./assesst/card1img.jpeg';">
                 <span>${pl.name}</span>
             </div>`;
         }).join("");
         $$(".sidebar-playlist-item").forEach(item => {
             item.addEventListener("click", () => {
-                openPlaylistDetail(parseInt(item.dataset.playlistId, 10));
+                openPlaylistDetail(item.dataset.playlistId);
             });
         });
     }
@@ -4007,13 +4322,15 @@ function runApp() {
     // MUSIC PLAYER
     // =========================================================================
     function loadTrack(idx, autoPlay = true) {
+        if (!playlist || playlist.length === 0) return;
         currentTrackIndex = (idx + playlist.length) % playlist.length;
         try { localStorage.setItem("spotify_currentTrack", currentTrackIndex); } catch (e) {}
         const t = playlist[currentTrackIndex];
-        albumArt.src = t.img;
-        trackTitle.textContent = t.title;
-        trackArtist.textContent = t.artist;
-        totTimeEl.textContent = fmt(t.duration);
+        albumArt.src = t.img || "./assesst/card1img.jpeg";
+        albumArt.onerror = () => { albumArt.src = "./assesst/card1img.jpeg"; };
+        trackTitle.textContent = t.title || "Untitled Track";
+        trackArtist.textContent = t.artist || "Unknown Artist";
+        totTimeEl.textContent = fmt(t.duration || 180);
         currentTime = 0;
         currTimeEl.textContent = "0:00";
         progressBar.value = 0;
@@ -4023,43 +4340,82 @@ function runApp() {
         highlightActiveCard();
         updateRightSidebar(t, playlist[(currentTrackIndex + 1) % playlist.length]);
 
+        initAudio();
+
+        if (audioElement && t && t.streamUrl) {
+            stopSynth();
+            stopProgress();
+            if (audioElement.src !== t.streamUrl) {
+                audioElement.src = t.streamUrl;
+            }
+        }
+
         // Render Music Page with current track details
-        musicModule.render(
-            t,
-            playlist,
-            isPlaying,
-            likedSongs,
-            (newIdx) => {
-                loadTrack(newIdx, true);
-            },
-            () => togglePlay(),
-            (sec) => {
-                currentTime = sec;
-                progressBar.value = (sec / t.duration) * 100;
-                currTimeEl.textContent = fmt(sec);
-                updateSliderBg(progressBar, progressBar.value);
-            },
-            toast
-        );
+        if (musicModule) {
+            musicModule.render(
+                t,
+                playlist,
+                isPlaying,
+                likedSongs,
+                (newIdx) => {
+                    loadTrack(newIdx, true);
+                },
+                () => togglePlay(),
+                (sec) => {
+                    currentTime = sec;
+                    if (audioElement && audioElement.duration && isFinite(audioElement.duration)) {
+                        audioElement.currentTime = sec;
+                    }
+                    const dur = (audioElement && audioElement.duration && isFinite(audioElement.duration)) ? audioElement.duration : (t.duration || 180);
+                    progressBar.value = (sec / dur) * 100;
+                    currTimeEl.textContent = fmt(sec);
+                    updateSliderBg(progressBar, progressBar.value);
+                },
+                toast
+            );
+        }
 
         if (autoPlay) playTrack(); else pauseTrack();
     }
 
     function playTrack() {
         initAudio();
+        const t = playlist[currentTrackIndex];
         isPlaying = true;
         playPauseIcon.className = "fa-solid fa-pause";
         playPauseBtn.classList.add("playing");
-        musicModule.updatePlayState(true);
-        startSynth();
-        startProgress();
+        if (musicModule) musicModule.updatePlayState(true);
+
+        if (audioElement && t && t.streamUrl) {
+            if (audioElement.src !== t.streamUrl) {
+                audioElement.src = t.streamUrl;
+            }
+            audioElement.volume = isMuted ? 0 : volume;
+            const playPromise = audioElement.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    stopSynth();
+                    stopProgress();
+                }).catch(err => {
+                    console.warn("Audio element play warning:", err);
+                    startSynth();
+                    startProgress();
+                });
+            }
+        } else {
+            startSynth();
+            startProgress();
+        }
     }
 
     function pauseTrack() {
         isPlaying = false;
         playPauseIcon.className = "fa-solid fa-play";
         playPauseBtn.classList.remove("playing");
-        musicModule.updatePlayState(false);
+        if (musicModule) musicModule.updatePlayState(false);
+        if (audioElement) {
+            audioElement.pause();
+        }
         stopSynth();
         stopProgress();
     }
@@ -4069,22 +4425,42 @@ function runApp() {
     }
 
     function nextTrack() {
-        if (repeatMode === "one") { loadTrack(currentTrackIndex, true); return; }
+        if (repeatMode === "one") {
+            if (audioElement) {
+                audioElement.currentTime = 0;
+                audioElement.play().catch(() => {});
+            } else {
+                loadTrack(currentTrackIndex, true);
+            }
+            return;
+        }
         if (isShuffle) {
             let n = currentTrackIndex;
-            while (n === currentTrackIndex && playlist.length > 1) n = Math.floor(Math.random() * playlist.length);
+            if (playlist.length > 1) {
+                while (n === currentTrackIndex) n = Math.floor(Math.random() * playlist.length);
+            }
             loadTrack(n, true);
         } else {
+            if (currentTrackIndex >= playlist.length - 1 && repeatMode !== "all") {
+                pauseTrack();
+                if (audioElement) audioElement.currentTime = 0;
+                return;
+            }
             loadTrack(currentTrackIndex + 1, true);
         }
     }
 
     function prevTrack() {
-        if (currentTime > 3) {
+        const cur = audioElement ? (audioElement.currentTime || currentTime) : currentTime;
+        if (cur > 3) {
+            if (audioElement) {
+                audioElement.currentTime = 0;
+            }
             currentTime = 0;
             currTimeEl.textContent = "0:00";
             progressBar.value = 0;
             updateSliderBg(progressBar, 0);
+            toast("Restarted song", "fa-rotate-left");
             return;
         }
         loadTrack(currentTrackIndex - 1, true);
@@ -4094,6 +4470,7 @@ function runApp() {
         stopProgress();
         tickerInterval = setInterval(() => {
             const t = playlist[currentTrackIndex];
+            if (!t) return;
             currentTime += 0.5;
             if (currentTime >= t.duration) {
                 if (repeatMode === "one") currentTime = 0;
@@ -4106,7 +4483,9 @@ function runApp() {
             updateSliderBg(progressBar, pct);
 
             // Sync live karaoke lyrics
-            musicModule.syncLyricsWithTime(currentTime, t.duration, t.lyrics ? t.lyrics.length : 0);
+            if (musicModule) {
+                musicModule.syncLyricsWithTime(currentTime, t.duration, t.lyrics ? t.lyrics.length : 0);
+            }
         }, 500);
     }
 
@@ -4116,18 +4495,20 @@ function runApp() {
 
     function updateLikeIcon() {
         const t = playlist[currentTrackIndex];
+        if (!t) return;
         const isLiked = likedSongs.has(t.id);
         likeBtn.className = isLiked ? "fa-solid fa-heart like-icon liked" : "fa-regular fa-heart like-icon";
         if ($("rightSidebarLikeBtn")) {
             $("rightSidebarLikeBtn").className = isLiked ? "fa-solid fa-heart now-playing-like-btn liked" : "fa-regular fa-heart now-playing-like-btn";
         }
-        musicModule.updateLikeState(isLiked);
+        if (musicModule) musicModule.updateLikeState(isLiked);
     }
 
     function highlightActiveCard() {
         const t = playlist[currentTrackIndex];
+        if (!t) return;
         $$(".card").forEach(c => {
-            c.classList.toggle("active-card", parseInt(c.dataset.songId, 10) === t.id);
+            c.classList.toggle("active-card", String(c.dataset.songId) === String(t.id));
         });
     }
 
@@ -4150,6 +4531,7 @@ function runApp() {
 
     likeBtn.addEventListener("click", () => {
         const t = playlist[currentTrackIndex];
+        if (!t) return;
         if (likedSongs.has(t.id)) {
             likedSongs.delete(t.id);
             toast("Removed from Liked Songs", "fa-heart-crack");
@@ -4167,8 +4549,15 @@ function runApp() {
     // Progress bar
     progressBar.addEventListener("input", () => {
         const t = playlist[currentTrackIndex];
+        if (!t) return;
         const pct = parseFloat(progressBar.value);
-        currentTime = (pct / 100) * t.duration;
+        const dur = (audioElement && audioElement.duration && isFinite(audioElement.duration))
+            ? audioElement.duration
+            : t.duration;
+        currentTime = (pct / 100) * dur;
+        if (audioElement && isFinite(currentTime)) {
+            audioElement.currentTime = currentTime;
+        }
         currTimeEl.textContent = fmt(currentTime);
         updateSliderBg(progressBar, pct);
     });
@@ -4178,6 +4567,7 @@ function runApp() {
         volume = parseFloat(volumeBar.value) / 100;
         isMuted = volume === 0;
         try { localStorage.setItem("spotify_volume", volume); } catch (e) {}
+        if (audioElement) audioElement.volume = isMuted ? 0 : volume;
         if (audioCtx && masterGain) masterGain.gain.setValueAtTime(volume * 0.3, audioCtx.currentTime);
         updateVolumeUI();
     });
@@ -4185,6 +4575,7 @@ function runApp() {
     volumeIcon.addEventListener("click", () => {
         if (isMuted) { isMuted = false; volume = prevVolume || 0.75; }
         else { prevVolume = volume; isMuted = true; volume = 0; }
+        if (audioElement) audioElement.volume = isMuted ? 0 : volume;
         if (audioCtx && masterGain) masterGain.gain.setValueAtTime(isMuted ? 0 : volume * 0.3, audioCtx.currentTime);
         updateVolumeUI();
     });
@@ -4236,6 +4627,26 @@ function runApp() {
     updateSliderBg(progressBar, 0);
     updateSliderBg(volumeBar, 75);
     loadTrack(0, false);
+
+    // Fetch and load real Audius trending songs into Home page
+    musicApi.getTrending(12).then(trendingTracks => {
+        if (Array.isArray(trendingTracks) && trendingTracks.length > 0) {
+            trendingTracks.forEach(tt => {
+                const exIdx = playlist.findIndex(p => String(p.id) === String(tt.id));
+                if (exIdx !== -1) {
+                    Object.assign(playlist[exIdx], tt);
+                } else {
+                    playlist.push(tt);
+                }
+            });
+            renderHome();
+            if (currentTrackIndex === 0 && !isPlaying) {
+                loadTrack(0, false);
+            }
+        }
+    }).catch(err => {
+        console.warn("Audius trending fetch failed:", err);
+    });
 
     // Initialize Profile Module
     const profileModule = initProfile({

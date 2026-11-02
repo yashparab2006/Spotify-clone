@@ -10,6 +10,7 @@ function cleanModule(code) {
 }
 
 const apiCode = fs.existsSync('js/api.js') ? cleanModule(fs.readFileSync('js/api.js', 'utf8')) : '';
+const musicApiCode = fs.existsSync('js/musicApi.js') ? cleanModule(fs.readFileSync('js/musicApi.js', 'utf8')) : '';
 const playlistCode = cleanModule(fs.readFileSync('js/playlist.js', 'utf8'));
 const premiumCode = cleanModule(fs.readFileSync('js/premium.js', 'utf8'));
 const profileCode = cleanModule(fs.readFileSync('js/profile.js', 'utf8'));
@@ -22,6 +23,7 @@ const bundle = [
   '// Spotify Clone - Universal Standalone Bundle (Works on file:/// and http://)',
   ';(function() {',
   apiCode,
+  musicApiCode,
   playlistCode,
   premiumCode,
   profileCode,

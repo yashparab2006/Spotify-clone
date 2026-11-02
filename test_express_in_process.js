@@ -158,7 +158,16 @@ async function run() {
     const aboutView = await executeMockRequest('GET', '/about');
     console.log('    Status:', aboutView.statusCode, '| Contains About Us:', typeof aboutView.body === 'string' && aboutView.body.includes('About Us'));
 
-    console.log('\nAll Express.js routes AND EJS Templates executed cleanly in-process!');
+    console.log('\n--- Testing Audius Music API Proxy Endpoints ---');
+    console.log('15. GET /api/music/trending');
+    const musicTrending = await executeMockRequest('GET', '/api/music/trending?limit=6');
+    console.log('    Status:', musicTrending.statusCode, '| Success:', musicTrending.body.success, '| Source:', musicTrending.body.source, '| Track Count:', musicTrending.body.count, '| First Track:', musicTrending.body.tracks?.[0]?.title);
+
+    console.log('16. GET /api/music/search?q=pop');
+    const musicSearch = await executeMockRequest('GET', '/api/music/search?q=pop&limit=5');
+    console.log('    Status:', musicSearch.statusCode, '| Success:', musicSearch.body.success, '| Source:', musicSearch.body.source, '| Query:', musicSearch.body.query, '| Results Count:', musicSearch.body.count);
+
+    console.log('\nAll Express.js routes, EJS Templates, and Music API Endpoints executed cleanly in-process!');
   } catch (err) {
     console.error('Test error:', err);
   }
