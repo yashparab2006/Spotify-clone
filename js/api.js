@@ -158,6 +158,23 @@ class SpotifyApiClient {
         });
     }
 
+    // Search & Podcasts
+    async search(query) {
+        return await this.request(`/api/search?q=${encodeURIComponent(query || '')}`);
+    }
+
+    async getPodcasts(category = '', q = '') {
+        const params = new URLSearchParams();
+        if (category && category !== 'All') params.append('category', category);
+        if (q) params.append('q', q);
+        const qs = params.toString() ? `?${params.toString()}` : '';
+        return await this.request(`/api/podcasts${qs}`);
+    }
+
+    async getPodcastById(id) {
+        return await this.request(`/api/podcasts/${id}`);
+    }
+
     async updateSubscription(tier) {
         return await this.request('/api/user/subscription', {
             method: 'PUT',

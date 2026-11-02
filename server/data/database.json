@@ -191,6 +191,15 @@
         5
       ],
       "createdAt": "2026-10-31T17:51:22.585Z"
+    },
+    {
+      "id": "a20c00f9-edce-455c-a2c3-177845ca864b",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-02T14:54:03.580Z"
     }
   ],
   "likes": {

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { randomUUID: uuidv4 } = require('crypto');
 const config = require('./config/config');
 const store = require('./data/store');
 
@@ -14,6 +15,14 @@ app.set('views', path.join(rootDir, 'views'));
 
 // Middlewares
 app.use(cors());
+
+// UUID Request Correlation ID Middleware
+app.use((req, res, next) => {
+  req.id = req.headers['x-request-id'] || uuidv4();
+  res.setHeader('X-Request-Id', req.id);
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -23,7 +32,7 @@ if (process.env.NODE_ENV !== 'test') {
     const start = Date.now();
     res.on('finish', () => {
       const duration = Date.now() - start;
-      console.log(`[${req.method}] ${req.originalUrl} -> ${res.statusCode} (${duration}ms)`);
+      console.log(`[${req.method}] ${req.originalUrl} [${req.id}] -> ${res.statusCode} (${duration}ms)`);
     });
     next();
   });
@@ -40,8 +49,9 @@ app.use('/bundle.js', express.static(path.join(rootDir, 'bundle.js')));
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
+    requestId: req.id,
     timestamp: new Date().toISOString(),
-    service: 'Spotify Clone Express Backend with EJS',
+    service: 'Spotify Clone Express Backend with EJS & UUID',
     version: '1.0.0',
     templateEngine: 'EJS',
     uptime: process.uptime()

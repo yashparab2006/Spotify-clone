@@ -9,23 +9,25 @@
 
         <div class="search-page-container" style="padding: 1.5rem 0;">
             <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">Browse all</h2>
-            <div class="browse-categories-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.25rem;">
+            <div class="browse-grid" id="browseGrid">
                 <% const genres = [
-                    { name: 'Pop', color: '#8d67ab', icon: 'fa-music' },
-                    { name: 'Hip-Hop', color: '#e13300', icon: 'fa-headphones' },
-                    { name: 'Rock', color: '#e91429', icon: 'fa-guitar' },
-                    { name: 'Bollywood', color: '#b02897', icon: 'fa-compact-disc' },
-                    { name: 'Indie', color: '#608108', icon: 'fa-drum' },
-                    { name: 'Lo-Fi Chill', color: '#477d95', icon: 'fa-cloud-moon' },
-                    { name: 'Electronic', color: '#0d73ec', icon: 'fa-bolt' },
-                    { name: 'Classical', color: '#7d4b32', icon: 'fa-violin' },
-                    { name: 'Charts', color: '#1db954', icon: 'fa-chart-line' },
-                    { name: 'Podcasts', color: '#27856a', icon: 'fa-podcast' }
+                    { name: 'Pop', color: '#e8115b', img: 'search1.jpg' },
+                    { name: 'Hip-Hop', color: '#ba5d07', img: 'search2.jpg' },
+                    { name: 'Rock', color: '#e91429', img: 'search3.jpg' },
+                    { name: 'Indie', color: '#608108', img: 'search4.jpg' },
+                    { name: 'Bollywood', color: '#d84000', img: 'search5.jpg' },
+                    { name: 'Chill', color: '#1e3264', img: 'search6.jpg' },
+                    { name: 'Dance', color: '#8400e7', img: 'search7.jpg' },
+                    { name: 'Devotional', color: '#006450', img: 'search8.jpg' },
+                    { name: 'Punjabi', color: '#b02897', img: 'search9.jpg' },
+                    { name: 'Workout', color: '#777777', img: 'search10.jpg' },
+                    { name: 'Romance', color: '#e1118c', img: 'search11.jpg' },
+                    { name: 'Party', color: '#509bf5', img: 'search12.jpg' }
                 ]; %>
                 <% genres.forEach(function(g) { %>
-                    <div class="genre-card" style="background-color: <%= g.color %>; border-radius: 8px; padding: 1rem; height: 120px; position: relative; overflow: hidden; cursor: pointer;">
-                        <h3 style="font-size: 1.2rem; font-weight: 700; color: #fff;"><%= g.name %></h3>
-                        <i class="fa-solid <%= g.icon %>" style="position: absolute; right: -10px; bottom: -10px; font-size: 4rem; opacity: 0.25; transform: rotate(15deg);"></i>
+                    <div class="genre-card" style="background-color: <%= g.color %>;" data-genre="<%= g.name %>">
+                        <h3 class="genre-title"><%= g.name %></h3>
+                        <img src="/assesst/<%= g.img %>" class="genre-img" alt="<%= g.name %>" loading="lazy">
                     </div>
                 <% }); %>
             </div>

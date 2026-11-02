@@ -121,6 +121,10 @@ async function run() {
     const pl = await executeMockRequest('GET', '/api/playlists', null, token);
     console.log('   Playlists:', pl.body.count);
 
+    console.log('6b. POST /api/playlists (Create playlist with UUID)');
+    const newPl = await executeMockRequest('POST', '/api/playlists', { name: 'Late Night Chill' }, token);
+    console.log('   Created Playlist ID (UUID):', newPl.body.playlist?.id, '| Valid UUID format:', /^[0-9a-f-]{36}$/i.test(newPl.body.playlist?.id));
+
     console.log('7. POST /api/user/likes (Toggle like on track 6)');
     const likeRes = await executeMockRequest('POST', '/api/user/likes', { trackId: 6 }, token);
     console.log('   Liked status:', likeRes.body.liked, '| Total liked songs:', likeRes.body.likes.length);

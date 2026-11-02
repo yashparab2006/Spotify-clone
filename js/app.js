@@ -50,16 +50,33 @@ function runApp() {
         if (savedVol !== null) volume = parseFloat(savedVol) || 0.75;
     } catch (e) {}
 
-    // Async sync with Node.js/Express Backend if online
+    // Async sync with Node.js/Express REST API if online
     if (typeof spotifyApi !== "undefined") {
         spotifyApi.checkHealth().then(isOnline => {
             if (isOnline) {
+                // Sync tracks catalog from REST API
+                spotifyApi.getTracks().then(res => {
+                    if (res && res.data && Array.isArray(res.data.tracks) && res.data.tracks.length > 0) {
+                        res.data.tracks.forEach(serverTrack => {
+                            const local = playlist.find(t => t.id === serverTrack.id);
+                            if (local) {
+                                Object.assign(local, serverTrack);
+                            } else {
+                                playlist.push(serverTrack);
+                            }
+                        });
+                    }
+                }).catch(() => {});
+
+                // Sync user likes from REST API
                 spotifyApi.getLikes().then(res => {
                     if (res && res.data && Array.isArray(res.data.likes)) {
                         res.data.likes.forEach(id => likedSongs.add(id));
                         if (typeof updateLikeIcon === "function") updateLikeIcon();
                     }
                 }).catch(() => {});
+
+                // Sync user playlists from REST API
                 spotifyApi.getPlaylists().then(res => {
                     if (res && res.data && Array.isArray(res.data.playlists) && res.data.playlists.length > 0) {
                         const existingNames = new Set(userPlaylists.map(p => p.name));
@@ -863,28 +880,42 @@ function runApp() {
     }
 
     // =========================================================================
-    // SEARCH PAGE
+    // SEARCH PAGE (SPOTIFY EXACT BROWSE ALL UI/UX)
     // =========================================================================
+    const getSearchImgPath = (filename) => {
+        if (typeof window !== "undefined" && window.location) {
+            if (window.location.protocol === "file:" && window.location.pathname.includes("/html/")) {
+                return `../assesst/${filename}`;
+            }
+            if (window.location.protocol.startsWith("http")) {
+                return `/assesst/${filename}`;
+            }
+        }
+        return `../assesst/${filename}`;
+    };
+
     const genres = [
-        { name: "Pop", color: "#8c67ab" },
-        { name: "Hip-Hop", color: "#ba5d07" },
-        { name: "Rock", color: "#e61e32" },
-        { name: "Indie", color: "#608108" },
-        { name: "Bollywood", color: "#d84000" },
-        { name: "Chill", color: "#1e3264" },
-        { name: "Dance", color: "#e13300" },
-        { name: "Devotional", color: "#477d95" },
-        { name: "Punjabi", color: "#509bf5" },
-        { name: "Workout", color: "#777777" },
-        { name: "Romance", color: "#dc148c" },
-        { name: "Party", color: "#e8115b" },
+        { name: "Pop", color: "#e8115b", img: "search1.jpg" },
+        { name: "Hip-Hop", color: "#ba5d07", img: "search2.jpg" },
+        { name: "Rock", color: "#e91429", img: "search3.jpg" },
+        { name: "Indie", color: "#608108", img: "search4.jpg" },
+        { name: "Bollywood", color: "#d84000", img: "search5.jpg" },
+        { name: "Chill", color: "#1e3264", img: "search6.jpg" },
+        { name: "Dance", color: "#8400e7", img: "search7.jpg" },
+        { name: "Devotional", color: "#006450", img: "search8.jpg" },
+        { name: "Punjabi", color: "#b02897", img: "search9.jpg" },
+        { name: "Workout", color: "#777777", img: "search10.jpg" },
+        { name: "Romance", color: "#e1118c", img: "search11.jpg" },
+        { name: "Party", color: "#509bf5", img: "search12.jpg" },
     ];
 
     function renderSearchDefault() {
         const grid = $("browseGrid");
+        if (!grid) return;
         grid.innerHTML = genres.map(g =>
-            `<div class="genre-card" style="background:${g.color}" data-genre="${g.name}">
-                ${g.name}
+            `<div class="genre-card" style="background:${g.color};" data-genre="${g.name}">
+                <h3 class="genre-title">${g.name}</h3>
+                <img src="${getSearchImgPath(g.img)}" class="genre-img" alt="${g.name}" loading="lazy">
             </div>`
         ).join("");
         $$(".genre-card").forEach(gc => {
@@ -895,7 +926,7 @@ function runApp() {
         });
     }
 
-    function doSearch(query) {
+    async function doSearch(query) {
         const q = query.trim().toLowerCase();
         if (!q) {
             $("searchDefault").style.display = "block";
@@ -905,9 +936,25 @@ function runApp() {
             return;
         }
         clearSearchBtn.style.display = "block";
-        const matches = playlist.filter(t =>
-            t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)
-        );
+
+        let matches = [];
+        // Query REST API /api/search?q=...
+        if (typeof spotifyApi !== "undefined") {
+            try {
+                const res = await spotifyApi.search(q);
+                if (res && res.data && res.data.results && Array.isArray(res.data.results.tracks) && res.data.results.tracks.length > 0) {
+                    matches = res.data.results.tracks;
+                }
+            } catch (e) {}
+        }
+
+        // Fallback to in-memory filter if REST API returned no items or offline
+        if (matches.length === 0) {
+            matches = playlist.filter(t =>
+                t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q) || (t.genre && t.genre.toLowerCase().includes(q))
+            );
+        }
+
         $("searchDefault").style.display = "none";
         if (matches.length > 0) {
             $("searchResults").style.display = "block";
@@ -1092,8 +1139,11 @@ function runApp() {
     $("savePlaylistBtn").addEventListener("click", () => {
         const name = $("playlistNameInput").value.trim() || `My Playlist #${playlistIdCounter}`;
         const desc = $("playlistDescInput").value.trim();
+        const playlistUuid = (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
+            ? crypto.randomUUID()
+            : `pl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const pl = {
-            id: playlistIdCounter++,
+            id: playlistUuid,
             name,
             desc,
             songs: [...pendingPlaylistSongs]
@@ -1153,6 +1203,27 @@ function runApp() {
                 <p class="card-info">${p.host}</p>
             </div>`
         ).join("");
+
+        // Fetch dynamic podcast shows from REST API /api/podcasts
+        if (typeof spotifyApi !== "undefined") {
+            spotifyApi.getPodcasts().then(res => {
+                if (res && res.data && Array.isArray(res.data.podcasts) && res.data.podcasts.length > 0) {
+                    $("podcastCards").innerHTML = res.data.podcasts.map(p =>
+                        `<div class="card podcast-show-card" data-podcast-id="${p.id}">
+                            <div class="card-img-wrapper">
+                                <img src="${p.cover || './assesst/card1img.jpeg'}" class="card-img" alt="${p.name}">
+                                <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                            </div>
+                            <p class="card-title">${p.name}</p>
+                            <p class="card-info">${p.host} • ${p.category}</p>
+                        </div>`
+                    ).join("");
+                    $$(".podcast-show-card").forEach(c => {
+                        c.addEventListener("click", () => toast(`Playing "${c.querySelector(".card-title").textContent}"`, "fa-podcast"));
+                    });
+                }
+            }).catch(() => {});
+        }
 
         $$(".podcast-show-card").forEach(c => {
             c.addEventListener("click", () => toast(`Playing "${c.querySelector(".card-title").textContent}"`, "fa-podcast"));
@@ -1541,7 +1612,11 @@ function runApp() {
     // Initialize Premium Module
     initPremium({
         onSubscribeSuccess: (plan) => {
-            profileModule.setTier(`Spotify Premium ${plan.name}`);
+            const newTier = `Spotify Premium ${plan.name}`;
+            profileModule.setTier(newTier);
+            if (typeof spotifyApi !== "undefined") {
+                spotifyApi.updateSubscription(newTier).catch(() => {});
+            }
             if (navPremiumBtn) {
                 navPremiumBtn.textContent = "Premium Active";
                 navPremiumBtn.style.background = "#1ed760";

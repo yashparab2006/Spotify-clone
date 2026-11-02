@@ -265,6 +265,9 @@ export function initProfile({ onOpenPlaylist, toast, navigate, onLogout, onOpenA
             userProfileState.bio = newBio;
             renderHero();
             closeEditModal();
+            if (typeof spotifyApi !== "undefined") {
+                spotifyApi.updateProfile({ name: newName, bio: newBio }).catch(() => {});
+            }
             toast("Profile details updated successfully!", "fa-user-pen");
         });
     }

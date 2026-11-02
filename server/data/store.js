@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { randomUUID: uuidv4 } = require('crypto');
 const config = require('../config/config');
 
 const dataDir = path.dirname(config.DATA_PATH);
@@ -219,8 +220,10 @@ module.exports = {
   createUser(userData) {
     const data = readData();
     const newId = data.users.length > 0 ? Math.max(...data.users.map(u => u.id)) + 1 : 1;
+    const userUuid = uuidv4();
     const user = {
       id: newId,
+      uuid: userUuid,
       name: userData.name || userData.email.split('@')[0],
       email: userData.email,
       passwordHash: userData.passwordHash,
@@ -271,15 +274,15 @@ module.exports = {
   },
   getPlaylistById(id) {
     const data = readData();
-    return data.playlists.find(p => p.id === Number(id)) || null;
+    return data.playlists.find(p => String(p.id) === String(id)) || null;
   },
   createPlaylist(userId, playlistData) {
     const data = readData();
-    const newId = data.playlists.length > 0 ? Math.max(...data.playlists.map(p => p.id)) + 1 : 1;
+    const playlistId = uuidv4();
     const playlist = {
-      id: newId,
+      id: playlistId,
       userId: Number(userId),
-      name: playlistData.name || `My Playlist #${newId}`,
+      name: playlistData.name || `My Playlist #${playlistId.slice(0, 8)}`,
       desc: playlistData.desc || "Curated playlist",
       cover: playlistData.cover || "/assesst/card1img.jpeg",
       songs: Array.isArray(playlistData.songs) ? playlistData.songs : [],
@@ -291,7 +294,7 @@ module.exports = {
   },
   updatePlaylist(userId, playlistId, updates) {
     const data = readData();
-    const playlist = data.playlists.find(p => p.id === Number(playlistId) && p.userId === Number(userId));
+    const playlist = data.playlists.find(p => String(p.id) === String(playlistId) && p.userId === Number(userId));
     if (!playlist) return null;
     if (updates.name !== undefined) playlist.name = updates.name;
     if (updates.desc !== undefined) playlist.desc = updates.desc;
@@ -301,7 +304,7 @@ module.exports = {
   },
   deletePlaylist(userId, playlistId) {
     const data = readData();
-    const index = data.playlists.findIndex(p => p.id === Number(playlistId) && p.userId === Number(userId));
+    const index = data.playlists.findIndex(p => String(p.id) === String(playlistId) && p.userId === Number(userId));
     if (index === -1) return false;
     data.playlists.splice(index, 1);
     writeData(data);
@@ -309,7 +312,7 @@ module.exports = {
   },
   addTrackToPlaylist(userId, playlistId, trackId) {
     const data = readData();
-    const playlist = data.playlists.find(p => p.id === Number(playlistId) && p.userId === Number(userId));
+    const playlist = data.playlists.find(p => String(p.id) === String(playlistId) && p.userId === Number(userId));
     if (!playlist) return null;
     const tId = Number(trackId);
     if (!playlist.songs.includes(tId)) {
@@ -320,7 +323,7 @@ module.exports = {
   },
   removeTrackFromPlaylist(userId, playlistId, trackId) {
     const data = readData();
-    const playlist = data.playlists.find(p => p.id === Number(playlistId) && p.userId === Number(userId));
+    const playlist = data.playlists.find(p => String(p.id) === String(playlistId) && p.userId === Number(userId));
     if (!playlist) return null;
     playlist.songs = playlist.songs.filter(id => id !== Number(trackId));
     writeData(data);

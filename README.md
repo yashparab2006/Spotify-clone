@@ -120,7 +120,11 @@ Open `http://localhost:5000` in your web browser. The server renders dynamic **E
 
 ## ⚡ Features
 
-1. **Full-Stack Synergy**: Real-time HTTP REST communication with Express while seamlessly falling back to `localStorage` when offline.
+1. **UUID (v4) Integration**:
+   - RFC 4122 compliant UUIDs for all custom playlists (`POST /api/playlists` generates IDs like `a20c00f9-edce-455c-a2c3-177845ca864b`).
+   - Every incoming HTTP request is assigned a unique `X-Request-Id` UUID for end-to-end tracing and debugging.
+   - Client-side offline creation uses standard `crypto.randomUUID()` to maintain unique playlist IDs across sessions.
+2. **Full-Stack Synergy**: Real-time HTTP REST communication with Express while seamlessly falling back to `localStorage` when offline.
 2. **Audio Engine**: Polyphonic Web Audio API synthesis with real musical chords, tempo, frequency roots, and dynamic lyrics display.
 3. **Collapsible Right Rail & Sliding Window**:
    - Collapsed rail (48px) with centered `<` chevron and "Now playing view" tooltip.
