@@ -62,15 +62,15 @@
                             <div class="visualizer-modes">
                                 <button class="visualizer-mode-btn active" data-mode="bars" title="Frequency Bars"><i class="fa-solid fa-chart-simple"></i> Bars</button>
                                 <button class="visualizer-mode-btn" data-mode="wave" title="Oscilloscope Wave"><i class="fa-solid fa-water"></i> Wave</button>
-                                <button class="visualizer-mode-btn" data-mode="radial" title="Radial Pulse"><i class="fa-solid fa-sun"></i> Pulse</button>
+                                <button class="visualizer-mode-btn" data-mode="radial" title="Radial Pulse"><i class="fa-solid fa-circle-notch"></i> Radial</button>
                             </div>
-                            <button class="visualizer-toggle-btn" id="visualizerToggleBtn" title="Toggle Visualizer">
-                                <i class="fa-solid fa-eye-slash" id="visualizerToggleIcon"></i> Hide
+                            <button class="visualizer-toggle-btn" id="visualizerToggleBtn" title="Toggle Compact / Expanded View">
+                                <i class="fa-solid fa-expand" id="visualizerToggleIcon"></i>
                             </button>
                         </div>
                     </div>
                     <div class="visualizer-canvas-wrapper" id="visualizerCanvasWrapper">
-                        <canvas id="audioVisualizerCanvas" height="180"></canvas>
+                        <canvas id="audioVisualizerCanvas" class="audio-visualizer-canvas"></canvas>
                     </div>
                 </div>
 

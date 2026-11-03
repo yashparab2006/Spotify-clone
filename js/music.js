@@ -134,12 +134,17 @@ export function initMusicModule(options = {}) {
 
     let activeAnalyser = options.getAnalyser ? options.getAnalyser() : null;
     let currentPalette = trackColorPalettes[1];
-    let isCurrentlyPlaying = false;
+    let isCurrentlyPlaying = typeof options.getIsPlaying === "function" ? options.getIsPlaying() : false;
+    let currentTrackMeta = options.getCurrentTrack ? options.getCurrentTrack() : null;
+    let audioCurrentTime = 0;
 
     // Visualizer state
     let visualizerMode = "bars"; // 'bars' | 'wave' | 'radial'
     let animFrameId = null;
-    const peakHoldBars = new Float32Array(64);
+    const barCount = 48;
+    const currentBarValues = new Float32Array(barCount);
+    const peakHoldBars = new Float32Array(barCount);
+    const peakHoldTimers = new Float32Array(barCount);
     let idlePhase = 0;
 
     const canvas = $("audioVisualizerCanvas");
@@ -155,7 +160,8 @@ export function initMusicModule(options = {}) {
             if (toggleIcon) {
                 toggleIcon.className = isExpanded ? "fa-solid fa-compress" : "fa-solid fa-expand";
             }
-            resizeCanvas();
+            setTimeout(resizeCanvas, 40);
+            setTimeout(resizeCanvas, 360);
         });
     }
 
@@ -169,15 +175,22 @@ export function initMusicModule(options = {}) {
 
     function resizeCanvas() {
         if (!canvas) return;
-        const rect = canvas.getBoundingClientRect();
+        const parent = canvasWrapper || canvas.parentElement;
+        const w = (parent ? parent.clientWidth : 0) || canvas.clientWidth || 800;
+        const h = (parent ? parent.clientHeight : 0) || (canvasWrapper && canvasWrapper.classList.contains("expanded") ? 240 : 130);
+        if (w <= 0 || h <= 0) return;
         const dpr = window.devicePixelRatio || 1;
-        canvas.width = Math.floor(rect.width * dpr);
-        canvas.height = Math.floor(rect.height * dpr);
-        if (ctx) ctx.scale(dpr, dpr);
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        if (ctx) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(dpr, dpr);
+        }
     }
 
     window.addEventListener("resize", resizeCanvas);
     setTimeout(resizeCanvas, 100);
+    setTimeout(resizeCanvas, 400);
 
     // Dynamic Album Color Theme application
     function applyDynamicTheme(track) {
@@ -223,28 +236,114 @@ export function initMusicModule(options = {}) {
             if (!pageMusic || pageMusic.style.display === "none") return; // Don't compute when page is hidden
 
             const dpr = window.devicePixelRatio || 1;
-            const w = canvas.width / dpr;
-            const h = canvas.height / dpr;
+            let w = canvas.width / dpr;
+            let h = canvas.height / dpr;
+
+            if (w <= 0 || h <= 0) {
+                resizeCanvas();
+                w = canvas.width / dpr;
+                h = canvas.height / dpr;
+                if (w <= 0 || h <= 0) return;
+            }
 
             ctx.clearRect(0, 0, w, h);
 
-            let hasAudio = false;
+            let hasRealAudio = false;
             if (activeAnalyser && isCurrentlyPlaying) {
-                activeAnalyser.getByteFrequencyData(freqBuffer);
-                activeAnalyser.getByteTimeDomainData(timeBuffer);
-                for (let i = 0; i < 32; i++) {
-                    if (freqBuffer[i] > 10) { hasAudio = true; break; }
+                try {
+                    activeAnalyser.getByteFrequencyData(freqBuffer);
+                    activeAnalyser.getByteTimeDomainData(timeBuffer);
+                    for (let i = 0; i < 32; i++) {
+                        if (freqBuffer[i] > 10) { hasRealAudio = true; break; }
+                    }
+                } catch (e) {
+                    hasRealAudio = false;
                 }
             }
 
-            idlePhase += 0.04;
+            // Sync playback state & current audio time
+            if (typeof options.getIsPlaying === "function") {
+                isCurrentlyPlaying = options.getIsPlaying();
+            }
+            const curTime = (typeof options.getAudioTime === "function" ? options.getAudioTime() : 0) || audioCurrentTime || (idlePhase * 0.4);
+            const volume = (typeof options.getAudioVolume === "function" ? options.getAudioVolume() : 1);
+            const track = (options.getCurrentTrack ? options.getCurrentTrack() : null) || currentTrackMeta;
+
+            let effectiveBpm = 118;
+            if (track) {
+                if (track.bpm) {
+                    const parsed = parseInt(track.bpm, 10);
+                    if (!isNaN(parsed) && parsed > 50 && parsed < 220) effectiveBpm = parsed;
+                } else if (track.tempo && !isNaN(track.tempo)) {
+                    effectiveBpm = track.tempo;
+                }
+            }
+
+            // High-fidelity dynamic spectrum synthesis when streaming external CORS-restricted songs
+            if (!hasRealAudio && isCurrentlyPlaying && volume > 0) {
+                const beatSec = 60 / effectiveBpm;
+                const beatProgress = (curTime / beatSec) % 1.0;
+                const kickPunch = Math.pow(Math.max(0, 1.0 - beatProgress * 2.2), 2.8);
+                const snarePhase = ((curTime / beatSec) + 1.0) % 2.0;
+                const snareCrack = Math.pow(Math.max(0, 1.0 - (snarePhase % 1.0) * 2.6), 3.0);
+                const hatTick = Math.pow(Math.max(0, Math.sin(curTime * (effectiveBpm / 60) * Math.PI * 2)), 4.0);
+                const sixteenth = Math.sin(curTime * (effectiveBpm / 60) * Math.PI * 4);
+
+                for (let i = 0; i < 64; i++) {
+                    let binEnergy = 0;
+                    const normIdx = i / 64;
+
+                    if (i < 8) {
+                        const bassSweep = Math.sin(curTime * 8 + i * 0.3) * 0.15;
+                        binEnergy = (kickPunch * 0.85 + bassSweep + 0.18) * (1.0 - normIdx * 0.35);
+                    } else if (i < 24) {
+                        const midHarmonic = Math.sin(curTime * 14 + i * 0.45) * 0.22;
+                        const chordWalk = Math.sin(curTime * 3.5 + i * 0.2) * 0.18;
+                        binEnergy = snareCrack * 0.55 + midHarmonic + chordWalk + 0.25;
+                    } else if (i < 46) {
+                        const hiTransient = hatTick * 0.45 + (sixteenth > 0 ? sixteenth * 0.22 : 0);
+                        const shimmer = Math.sin(curTime * 24 + i * 0.7) * 0.16;
+                        binEnergy = hiTransient + shimmer + 0.20;
+                    } else {
+                        const sparkle = (Math.sin(curTime * 32 + i * 1.1) * 0.15 + 0.15);
+                        const noise = ((Math.sin(curTime * 100 + i * 13) + 1) * 0.5) * 0.28;
+                        binEnergy = (sparkle + noise) * (hatTick * 0.3 + 0.7);
+                    }
+
+                    const flutter = (Math.sin(curTime * 50 + i * 7.7) * 0.04);
+                    binEnergy = Math.max(0.04, Math.min(1.0, (binEnergy + flutter) * volume));
+                    freqBuffer[i] = Math.floor(binEnergy * 255);
+                }
+
+                for (let i = 0; i < 128; i++) {
+                    const angle = (i / 128) * Math.PI * 4;
+                    const waveSample = Math.sin(angle * 2 + curTime * 18) * 0.45 * (kickPunch * 0.4 + 0.6)
+                        + Math.sin(angle * 5 + curTime * 35) * 0.25 * hatTick
+                        + Math.sin(angle * 1 + curTime * 8) * 0.3;
+                    timeBuffer[i] = Math.floor(Math.max(0, Math.min(255, (128 + waveSample * 110 * volume))));
+                }
+                hasRealAudio = true;
+            } else if (!hasRealAudio) {
+                // Gentle ambient harmonic breathing wave when paused
+                idlePhase += 0.035;
+                for (let i = 0; i < 64; i++) {
+                    const ambient = (Math.sin(idlePhase + i * 0.18) * 0.08 + Math.cos(idlePhase * 0.7 + i * 0.09) * 0.05 + 0.12);
+                    freqBuffer[i] = Math.floor(ambient * 255);
+                }
+                for (let i = 0; i < 128; i++) {
+                    const wSample = Math.sin(idlePhase * 1.2 + (i / 128) * Math.PI * 2) * 0.15;
+                    timeBuffer[i] = Math.floor(128 + wSample * 128);
+                }
+            }
+
+            idlePhase += 0.035;
 
             if (visualizerMode === "bars") {
-                drawBars(w, h, freqBuffer, hasAudio);
+                drawBars(w, h, freqBuffer, hasRealAudio);
             } else if (visualizerMode === "wave") {
-                drawWave(w, h, timeBuffer, hasAudio);
+                drawWave(w, h, timeBuffer, hasRealAudio);
             } else if (visualizerMode === "radial") {
-                drawRadial(w, h, freqBuffer, hasAudio);
+                drawRadial(w, h, freqBuffer, hasRealAudio);
             }
         }
 
@@ -252,82 +351,93 @@ export function initMusicModule(options = {}) {
     }
 
     // MODE 1: Frequency Bars
-    function drawBars(w, h, freqBuffer, hasAudio) {
-        const barCount = 42;
-        const totalGap = (barCount - 1) * 3;
-        const barWidth = Math.max(3, (w - totalGap) / barCount);
+    function drawBars(w, h, freqBuffer, isLive) {
+        const count = 48;
+        const gap = 3;
+        const totalGap = (count - 1) * gap;
+        const barWidth = Math.max(3, (w - totalGap) / count);
         const themeColor = currentPalette.primary;
         const rgb = currentPalette.rgb;
+        const maxBarH = h - 20;
 
-        for (let i = 0; i < barCount; i++) {
-            let val = 0;
-            if (hasAudio) {
-                const binIdx = Math.floor((i / barCount) * 28);
-                val = freqBuffer[binIdx] / 255;
+        for (let i = 0; i < count; i++) {
+            const binIdx = Math.min(63, Math.floor(Math.pow(i / count, 1.25) * 58));
+            const rawVal = freqBuffer[binIdx] / 255;
+
+            if (rawVal > currentBarValues[i]) {
+                currentBarValues[i] = rawVal;
             } else {
-                // Ambient idle gentle wave
-                val = (Math.sin(idlePhase + i * 0.22) * 0.15 + 0.2) * (isCurrentlyPlaying ? 0.4 : 0.2);
+                currentBarValues[i] = Math.max(0, currentBarValues[i] - 0.035);
             }
 
-            // Smooth minimum height
-            const barH = Math.max(4, val * (h - 20));
-            const x = i * (barWidth + 3);
+            const val = currentBarValues[i];
+            const barH = Math.max(4, val * maxBarH);
+            const x = i * (barWidth + gap);
             const y = h - barH - 4;
 
-            // Peak hold calculation
-            if (val > peakHoldBars[i]) {
+            if (val >= peakHoldBars[i]) {
                 peakHoldBars[i] = val;
+                peakHoldTimers[i] = 12;
             } else {
-                peakHoldBars[i] = Math.max(0, peakHoldBars[i] - 0.015);
+                if (peakHoldTimers[i] > 0) {
+                    peakHoldTimers[i]--;
+                } else {
+                    peakHoldBars[i] = Math.max(0, peakHoldBars[i] - 0.018);
+                }
             }
 
-            // Dynamic Gradient per bar
             const grad = ctx.createLinearGradient(0, h, 0, y);
             grad.addColorStop(0, `rgba(${rgb}, 0.15)`);
             grad.addColorStop(0.5, themeColor);
+            grad.addColorStop(0.9, "#ffffff");
             grad.addColorStop(1, "#ffffff");
 
             ctx.fillStyle = grad;
             ctx.beginPath();
             if (ctx.roundRect) {
-                ctx.roundRect(x, y, barWidth, barH, [4, 4, 0, 0]);
+                ctx.roundRect(x, y, barWidth, barH, [3, 3, 0, 0]);
             } else {
                 ctx.rect(x, y, barWidth, barH);
             }
             ctx.fill();
 
-            // Peak indicator dot
-            if (peakHoldBars[i] > 0.08) {
-                const peakY = Math.max(2, h - (peakHoldBars[i] * (h - 20)) - 8);
-                ctx.fillStyle = `rgba(${rgb}, 0.9)`;
-                ctx.fillRect(x, peakY, barWidth, 2);
+            if (peakHoldBars[i] > 0.06) {
+                const peakY = Math.max(2, h - (peakHoldBars[i] * maxBarH) - 7);
+                ctx.fillStyle = `rgba(${rgb}, 0.95)`;
+                ctx.fillRect(x, peakY, barWidth, 2.5);
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(x + 1, peakY, Math.max(1, barWidth - 2), 1.5);
             }
         }
     }
 
     // MODE 2: Oscilloscope Wave
-    function drawWave(w, h, timeBuffer, hasAudio) {
+    function drawWave(w, h, timeBuffer, isLive) {
         const themeColor = currentPalette.primary;
         const rgb = currentPalette.rgb;
         const centerY = h / 2;
 
         ctx.save();
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(w, centerY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.lineWidth = 2.5;
         ctx.strokeStyle = themeColor;
         ctx.shadowColor = themeColor;
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 14;
 
         ctx.beginPath();
         const sliceWidth = w / (timeBuffer.length - 1);
 
         for (let i = 0; i < timeBuffer.length; i++) {
-            let v = 0.5;
-            if (hasAudio) {
-                v = timeBuffer[i] / 255.0;
-            } else {
-                v = 0.5 + Math.sin(idlePhase * 1.5 + (i * 0.12)) * 0.1;
-            }
-            const y = v * (h - 16) + 8;
+            const v = timeBuffer[i] / 255.0;
+            const y = v * (h - 24) + 12;
             const x = i * sliceWidth;
 
             if (i === 0) ctx.moveTo(x, y);
@@ -335,19 +445,13 @@ export function initMusicModule(options = {}) {
         }
         ctx.stroke();
 
-        // Secondary subtle mirror glow wave
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = `rgba(${rgb}, 0.35)`;
-        ctx.shadowBlur = 4;
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = `rgba(${rgb}, 0.4)`;
+        ctx.shadowBlur = 6;
         ctx.beginPath();
         for (let i = 0; i < timeBuffer.length; i++) {
-            let v = 0.5;
-            if (hasAudio) {
-                v = 1.0 - (timeBuffer[i] / 255.0);
-            } else {
-                v = 0.5 - Math.sin(idlePhase * 1.5 + (i * 0.12)) * 0.08;
-            }
-            const y = v * (h - 16) + 8;
+            const v = 1.0 - (timeBuffer[i] / 255.0);
+            const y = v * (h - 24) + 12;
             const x = i * sliceWidth;
             if (i === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
@@ -358,45 +462,45 @@ export function initMusicModule(options = {}) {
     }
 
     // MODE 3: Radial Pulse
-    function drawRadial(w, h, freqBuffer, hasAudio) {
+    function drawRadial(w, h, freqBuffer, isLive) {
         const cx = w / 2;
         const cy = h / 2;
         const baseRadius = Math.min(w, h) * 0.22;
-        const spokeCount = 36;
+        const spokeCount = 40;
         const themeColor = currentPalette.primary;
         const rgb = currentPalette.rgb;
 
         ctx.save();
 
-        // Center pulsating core
-        let coreBoost = 0;
-        if (hasAudio) {
-            coreBoost = (freqBuffer[0] + freqBuffer[1] + freqBuffer[2]) / (3 * 255);
-        } else {
-            coreBoost = (Math.sin(idlePhase * 2) + 1) * 0.08;
-        }
+        const bassEnergy = (freqBuffer[0] + freqBuffer[1] + freqBuffer[2] + freqBuffer[3]) / (4 * 255);
+        const coreRadius = baseRadius + bassEnergy * 16;
+
+        const radialGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreRadius);
+        radialGrad.addColorStop(0, `rgba(${rgb}, ${0.45 + bassEnergy * 0.3})`);
+        radialGrad.addColorStop(0.7, `rgba(${rgb}, ${0.15 + bassEnergy * 0.2})`);
+        radialGrad.addColorStop(1, "rgba(0,0,0,0)");
 
         ctx.beginPath();
-        ctx.arc(cx, cy, baseRadius + coreBoost * 14, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${rgb}, ${0.12 + coreBoost * 0.25})`;
+        ctx.arc(cx, cy, coreRadius, 0, Math.PI * 2);
+        ctx.fillStyle = radialGrad;
         ctx.shadowColor = themeColor;
-        ctx.shadowBlur = 18;
+        ctx.shadowBlur = 20;
         ctx.fill();
 
-        // Radiating frequency spokes
-        for (let i = 0; i < spokeCount; i++) {
-            const angle = (i / spokeCount) * Math.PI * 2 + (idlePhase * 0.1);
-            let val = 0;
-            if (hasAudio) {
-                const binIdx = Math.floor((i / spokeCount) * 24);
-                val = (freqBuffer[binIdx] / 255);
-            } else {
-                val = (Math.sin(idlePhase + i * 0.3) * 0.2 + 0.3) * 0.4;
-            }
+        ctx.beginPath();
+        ctx.arc(cx, cy, baseRadius * 0.45, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 255, 255, 0.4)`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
 
-            const spokeLength = 6 + val * (Math.min(w, h) * 0.32);
-            const rStart = baseRadius + coreBoost * 10;
-            const rEnd = rStart + spokeLength;
+        for (let i = 0; i < spokeCount; i++) {
+            const angle = (i / spokeCount) * Math.PI * 2 - (Math.PI / 2);
+            const binIdx = Math.min(63, Math.floor((i / spokeCount) * 48));
+            const val = freqBuffer[binIdx] / 255;
+            const spokeLen = 6 + val * (Math.min(w, h) * 0.34);
+
+            const rStart = baseRadius + bassEnergy * 6;
+            const rEnd = rStart + spokeLen;
 
             const x1 = cx + Math.cos(angle) * rStart;
             const y1 = cy + Math.sin(angle) * rStart;
@@ -404,7 +508,11 @@ export function initMusicModule(options = {}) {
             const y2 = cy + Math.sin(angle) * rEnd;
 
             ctx.lineWidth = 3;
-            ctx.strokeStyle = val > 0.6 ? "#ffffff" : themeColor;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = val > 0.65 ? "#ffffff" : themeColor;
+            ctx.shadowColor = themeColor;
+            ctx.shadowBlur = val > 0.65 ? 12 : 4;
+
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
@@ -419,6 +527,10 @@ export function initMusicModule(options = {}) {
     // =========================================================================
     function render(track, playlist, isPlaying, likedSongs, onPlayTrack, onTogglePlay, onSeek, toast) {
         if (!track) return;
+        currentTrackMeta = track;
+        isCurrentlyPlaying = !!isPlaying;
+        setTimeout(resizeCanvas, 40);
+        setTimeout(resizeCanvas, 200);
         const meta = trackDetailsMeta[track.id] || trackDetailsMeta[1];
 
         // 1. Dynamic Album Theming
@@ -586,6 +698,7 @@ export function initMusicModule(options = {}) {
 
     // Called every tick to sync lyric highlight
     function syncLyricsWithTime(currentTime, duration, lyricsLength) {
+        audioCurrentTime = currentTime;
         if (!lyricsLength) return;
         const step = duration / lyricsLength;
         const currentIdx = Math.min(lyricsLength - 1, Math.floor(currentTime / step));
@@ -606,6 +719,8 @@ export function initMusicModule(options = {}) {
         updatePlayState,
         updateLikeState,
         syncLyricsWithTime,
+        setCurrentTrack(t) { currentTrackMeta = t; },
+        setAudioTime(t) { audioCurrentTime = t; },
         setAnalyser(node) {
             activeAnalyser = node;
         },

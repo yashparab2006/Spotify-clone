@@ -1,4 +1,4 @@
-<%- include('partials/head', { pageTitle: 'Spotify - Search' }) %>
+<%- include('partials/head', { pageTitle: 'Spotify - Search', activePage: 'search' }) %>
 
 <div class="main">
     <%- include('partials/sidebar', { activePage: 'search', playlists: typeof playlists !== 'undefined' ? playlists : [] }) %>
@@ -7,35 +7,43 @@
     <div class="main-content" id="mainContent">
         <%- include('partials/topbar', { activePage: 'search', searchQuery: typeof searchQuery !== 'undefined' ? searchQuery : '', user: typeof user !== 'undefined' ? user : null }) %>
 
-        <div class="search-page-container" style="padding: 1.5rem 0;">
-            <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">Browse all</h2>
-            <div class="browse-grid" id="browseGrid">
-                <% const genres = [
-                    { name: 'Pop', color: '#e8115b', img: 'search1.jpg' },
-                    { name: 'Hip-Hop', color: '#ba5d07', img: 'search2.jpg' },
-                    { name: 'Rock', color: '#e91429', img: 'search3.jpg' },
-                    { name: 'Indie', color: '#608108', img: 'search4.jpg' },
-                    { name: 'Bollywood', color: '#d84000', img: 'search5.jpg' },
-                    { name: 'Chill', color: '#1e3264', img: 'search6.jpg' },
-                    { name: 'Dance', color: '#8400e7', img: 'search7.jpg' },
-                    { name: 'Devotional', color: '#006450', img: 'search8.jpg' },
-                    { name: 'Punjabi', color: '#b02897', img: 'search9.jpg' },
-                    { name: 'Workout', color: '#777777', img: 'search10.jpg' },
-                    { name: 'Romance', color: '#e1118c', img: 'search11.jpg' },
-                    { name: 'Party', color: '#509bf5', img: 'search12.jpg' }
-                ]; %>
-                <% genres.forEach(function(g) { %>
-                    <div class="genre-card" style="background-color: <%= g.color %>;" data-genre="<%= g.name %>">
-                        <h3 class="genre-title"><%= g.name %></h3>
-                        <img src="/assesst/<%= g.img %>" class="genre-img" alt="<%= g.name %>" loading="lazy">
-                    </div>
-                <% }); %>
+        <div class="page" id="pageSearch" style="display:block; padding: 1.5rem 0;">
+            <!-- Default Browse All Genres Grid -->
+            <div id="searchDefault" style="<%= (typeof results !== 'undefined' && results.length > 0) ? 'display:none;' : 'display:block;' %>">
+                <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">Browse all</h2>
+                <div class="browse-grid" id="browseGrid">
+                    <% const genres = [
+                        { name: 'Pop', color: '#e8115b', img: 'search1.jpg' },
+                        { name: 'Hip-Hop', color: '#ba5d07', img: 'search2.jpg' },
+                        { name: 'Rock', color: '#e91429', img: 'search3.jpg' },
+                        { name: 'Indie', color: '#608108', img: 'search4.jpg' },
+                        { name: 'Bollywood', color: '#d84000', img: 'search5.jpg' },
+                        { name: 'Chill', color: '#1e3264', img: 'search6.jpg' },
+                        { name: 'Dance', color: '#8400e7', img: 'search7.jpg' },
+                        { name: 'Devotional', color: '#006450', img: 'search8.jpg' },
+                        { name: 'Punjabi', color: '#b02897', img: 'search9.jpg' },
+                        { name: 'Workout', color: '#777777', img: 'search10.jpg' },
+                        { name: 'Romance', color: '#e1118c', img: 'search11.jpg' },
+                        { name: 'Party', color: '#509bf5', img: 'search12.jpg' }
+                    ]; %>
+                    <% genres.forEach(function(g) { %>
+                        <div class="genre-card" style="background-color: <%= g.color %>; cursor: pointer;" data-genre="<%= g.name %>" title="Explore <%= g.name %> music">
+                            <h3 class="genre-title"><%= g.name %></h3>
+                            <img src="/assesst/<%= g.img %>" class="genre-img" alt="<%= g.name %>" loading="lazy">
+                        </div>
+                    <% }); %>
+                </div>
             </div>
 
-            <!-- Search Results Container -->
-            <div id="searchResultsSection" style="margin-top: 2rem; <%= (typeof results !== 'undefined' && results.length > 0) ? '' : 'display:none;' %>">
-                <h2>Top Results</h2>
-                <div class="cards-container">
+            <!-- Live & Dynamic Search Results Container -->
+            <div id="searchResults" style="<%= (typeof results !== 'undefined' && results.length > 0) ? 'display:block;' : 'display:none;' %>; margin-top: 1.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                    <h2>Top Results</h2>
+                    <button class="badge dark-badge" id="backToBrowseBtn" style="cursor:pointer; display:inline-flex; align-items:center; gap:0.4rem;">
+                        <i class="fa-solid fa-arrow-left"></i> Back to Browse all
+                    </button>
+                </div>
+                <div class="cards-container" id="searchResultCards">
                     <% if (typeof results !== 'undefined' && results.length > 0) { %>
                         <% results.forEach(function(track) { %>
                             <div class="card" data-song-id="<%= track.id %>">
@@ -50,7 +58,16 @@
                     <% } %>
                 </div>
             </div>
+
+            <!-- Empty / No Results Message -->
+            <div class="no-results" id="noResults" style="display:none; text-align:center; padding: 4rem 1rem;">
+                <i class="fa-solid fa-magnifying-glass" style="font-size:3rem; color:#b3b3b3; margin-bottom:1rem;"></i>
+                <h3 style="font-size:1.4rem; font-weight:700; margin-bottom:0.5rem;">No results found</h3>
+                <p style="color:#b3b3b3; font-size:0.95rem;">Please check spelling or try browsing one of the genres above.</p>
+            </div>
         </div>
+
+        <%- include('partials/music-page') %>
     </div>
 
     <%- include('partials/right-rail') %>
@@ -59,4 +76,3 @@
 
 <%- include('partials/modals') %>
 <%- include('partials/scripts') %>
-

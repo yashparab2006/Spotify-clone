@@ -1,4 +1,4 @@
-<%- include('partials/head', { pageTitle: 'Spotify - Podcasts & Shows' }) %>
+<%- include('partials/head', { pageTitle: 'Spotify - Podcasts & Shows', activePage: 'podcasts' }) %>
 
 <div class="main">
     <%- include('partials/sidebar', { activePage: 'podcasts', playlists: typeof playlists !== 'undefined' ? playlists : [] }) %>
@@ -39,6 +39,8 @@
                 <% } %>
             </div>
         </div>
+
+        <%- include('partials/music-page') %>
     </div>
 
     <%- include('partials/right-rail') %>

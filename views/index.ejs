@@ -1,4 +1,4 @@
-<%- include('partials/head', { pageTitle: 'Spotify - Web Player: Music for everyone' }) %>
+<%- include('partials/head', { pageTitle: 'Spotify - Web Player: Music for everyone', activePage: 'home' }) %>
 
 <div class="main">
     <%- include('partials/sidebar', { activePage: 'home', playlists: typeof playlists !== 'undefined' ? playlists : [] }) %>
@@ -62,7 +62,7 @@
             <h2>Featured Charts</h2>
             <div class="cards-container" id="featuredCards">
                 <% if (typeof tracks !== 'undefined' && tracks.length > 0) { %>
-                    <% tracks.forEach(function(track) { %>
+                    <% tracks.slice(0, 6).forEach(function(track) { %>
                         <div class="card" data-song-id="<%= track.id %>">
                             <div class="card-img-wrapper">
                                 <img src="<%= track.img %>" class="card-img" alt="<%= track.title %>">
@@ -74,6 +74,30 @@
                     <% }); %>
                 <% } %>
             </div>
+
+            <!-- ===== SECTION: BOLLYWOOD & HINDI ===== -->
+            <h2>Bollywood & Hindi Chartbusters</h2>
+            <div class="cards-container" id="bollywoodCards"></div>
+
+            <!-- ===== SECTION: BOLLYWOOD ROMANCE ===== -->
+            <h2>Bollywood Romance & Melodies</h2>
+            <div class="cards-container" id="bollywoodRomanceCards"></div>
+
+            <!-- ===== SECTION: PUNJABI & DESI POP ===== -->
+            <h2>Desi & Punjabi Viral Hits</h2>
+            <div class="cards-container" id="punjabiCards"></div>
+
+            <!-- ===== SECTION: ELECTRONIC & DANCE ===== -->
+            <h2>Electronic & High Energy Dance</h2>
+            <div class="cards-container" id="electronicCards"></div>
+
+            <!-- ===== SECTION: CHILL & LO-FI ===== -->
+            <h2>Chill, Lo-Fi & Ambient</h2>
+            <div class="cards-container" id="chillCards"></div>
+
+            <!-- ===== SECTION: HIP-HOP & RAP ===== -->
+            <h2>Hip-Hop & Urban Hits</h2>
+            <div class="cards-container" id="hipHopCards"></div>
 
             <!-- ===== SPOTIFY FOOTER ===== -->
             <footer class="spotify-footer">

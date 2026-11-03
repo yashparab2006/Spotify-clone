@@ -245,14 +245,147 @@
       "cover": "/assesst/card1img.jpeg",
       "songs": [],
       "createdAt": "2026-11-02T15:46:23.138Z"
+    },
+    {
+      "id": "aa6ff8f8-d859-4701-acea-66c4983c05ec",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T13:13:50.519Z"
+    },
+    {
+      "id": "852d8200-ce38-4a72-99a2-18346f2ff2d3",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T14:53:08.602Z"
+    },
+    {
+      "id": "32f351a0-6405-498f-90df-d1e9ea1e74d8",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T14:53:48.488Z"
+    },
+    {
+      "id": "59835c67-ea96-4d42-ae14-68e011df1ac0",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T15:02:49.882Z"
+    },
+    {
+      "id": "71e1106d-7b74-4e25-a8ca-bf037edf8ba9",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T15:16:41.572Z"
+    },
+    {
+      "id": "e51dff3b-a477-41a4-be40-66185d23e82a",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T15:17:03.380Z"
+    },
+    {
+      "id": "078e3261-c6f4-4a43-aaa0-5ed7eb3ddbf7",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T15:17:44.593Z"
+    },
+    {
+      "id": "7de82d1c-17c0-4281-b994-1c662ee2b926",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T15:18:25.403Z"
+    },
+    {
+      "id": "20caa15a-8cd6-4b59-869d-dd6fe4eef669",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T15:19:05.073Z"
+    },
+    {
+      "id": "67e0099a-f841-460c-bdab-5fa83e271bf4",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T15:19:47.800Z"
+    },
+    {
+      "id": "5e23217d-dd79-4f25-b68c-661ec5ac2f8f",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T15:20:03.865Z"
+    },
+    {
+      "id": "1a61c1f3-62ac-4a4f-aaa4-d0819ba290f0",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T15:36:01.584Z"
+    },
+    {
+      "id": "1a41291b-9427-488c-b956-1fa2f619ab99",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T15:49:40.472Z"
+    },
+    {
+      "id": "34ad1953-0c7f-4571-bb04-37a0648b2512",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T16:07:19.692Z"
+    },
+    {
+      "id": "e708b9e0-fd0f-4806-a9c0-1ad6a40085ce",
+      "userId": 1,
+      "name": "Late Night Chill",
+      "desc": "Curated playlist",
+      "cover": "/assesst/card1img.jpeg",
+      "songs": [],
+      "createdAt": "2026-11-03T16:07:42.510Z"
     }
   ],
   "likes": {
     "1": [
-      1,
       2,
-      5,
-      6
+      5
     ],
     "2": [
       2

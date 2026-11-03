@@ -28,6 +28,29 @@ function createMockReqRes({ method = 'GET', url = '/', headers = {}, body = null
   res.getHeader = (key) => res._headers[key.toLowerCase()];
   res.removeHeader = (key) => { delete res._headers[key.toLowerCase()]; };
 
+  res.render = (view, options, fn) => {
+    app.render(view, options, (err, str) => {
+      if (err) {
+        if (fn) return fn(err);
+        return res.status(500).send(err.message);
+      }
+      if (fn) return fn(null, str);
+      res.setHeader('content-type', 'text/html');
+      res.send(str);
+    });
+  };
+
+  res.sendFile = (filePath) => {
+    try {
+      const fs = require('fs');
+      const content = fs.readFileSync(filePath, 'utf8');
+      res.setHeader('content-type', 'application/javascript');
+      res.send(content);
+    } catch (e) {
+      res.status(404).send('Not Found');
+    }
+  };
+
   return { req, res };
 }
 
@@ -48,7 +71,7 @@ async function executeMockRequest(method, url, body = null, token = null) {
       finished = true;
       let parsed = data;
       try { parsed = JSON.parse(data); } catch (e) {}
-      resolve({ statusCode: res.statusCode, body: parsed });
+      resolve({ statusCode: res.statusCode, headers: res._headers, body: parsed });
     }
 
     res.status = (code) => {
@@ -166,6 +189,42 @@ async function run() {
     console.log('16. GET /api/music/search?q=pop');
     const musicSearch = await executeMockRequest('GET', '/api/music/search?q=pop&limit=5');
     console.log('    Status:', musicSearch.statusCode, '| Success:', musicSearch.body.success, '| Source:', musicSearch.body.source, '| Query:', musicSearch.body.query, '| Results Count:', musicSearch.body.count);
+
+    console.log('17. GET /api/music/feed (Multi-genre home feed)');
+    const musicFeed = await executeMockRequest('GET', '/api/music/feed');
+    console.log('    Status:', musicFeed.statusCode, '| Success:', musicFeed.body.success, '| Source:', musicFeed.body.source, '| Trending tracks:', musicFeed.body.trending?.length, '| EDM tracks:', musicFeed.body.electronic?.length, '| Bollywood tracks:', musicFeed.body.bollywood?.length);
+
+    console.log('18. GET /api/music/bollywood (Dedicated Bollywood endpoint)');
+    const musicBolly = await executeMockRequest('GET', '/api/music/bollywood?limit=8');
+    console.log('    Status:', musicBolly.statusCode, '| Success:', musicBolly.body.success, '| Source:', musicBolly.body.source, '| Track Count:', musicBolly.body.count, '| Sample Track:', musicBolly.body.tracks?.[0]?.title, 'by', musicBolly.body.tracks?.[0]?.artist);
+
+    console.log('19. GET /bundle.js (Standalone universal bundle)');
+    const bundleRes = await executeMockRequest('GET', '/bundle.js');
+    console.log('    Status:', bundleRes.statusCode, '| Content-Type:', bundleRes.headers['content-type'], '| Length:', typeof bundleRes.body === 'string' ? bundleRes.body.length : 'N/A', '| Contains runApp:', typeof bundleRes.body === 'string' && bundleRes.body.includes('runApp'));
+
+    console.log('20. GET /auth?tab=login & GET /signup');
+    const authRes = await executeMockRequest('GET', '/auth?tab=login');
+    const signupRes = await executeMockRequest('GET', '/signup');
+    console.log('    /auth Status:', authRes.statusCode, '| /signup Status:', signupRes.statusCode, '| Has loginForm:', typeof authRes.body === 'string' && authRes.body.includes('id="loginForm"'));
+
+    console.log('21. Verify Search Page Elements');
+    const searchCheck = await executeMockRequest('GET', '/search');
+    const hasBrowseGrid = typeof searchCheck.body === 'string' && searchCheck.body.includes('id="browseGrid"');
+    const hasSearchDefault = typeof searchCheck.body === 'string' && searchCheck.body.includes('id="searchDefault"');
+    const hasSearchResults = typeof searchCheck.body === 'string' && searchCheck.body.includes('id="searchResults"');
+    const hasSearchResultCards = typeof searchCheck.body === 'string' && searchCheck.body.includes('id="searchResultCards"');
+    console.log('    Status:', searchCheck.statusCode, '| browseGrid:', hasBrowseGrid, '| searchDefault:', hasSearchDefault, '| searchResults:', hasSearchResults, '| searchResultCards:', hasSearchResultCards);
+
+    console.log('22. Verify Live Audio Spectrum Visualizer Elements');
+    const musicCheck = await executeMockRequest('GET', '/music');
+    const hasVisualizerContainer = typeof musicCheck.body === 'string' && musicCheck.body.includes('id="musicVisualizerContainer"');
+    const hasVisualizerCanvas = typeof musicCheck.body === 'string' && musicCheck.body.includes('id="audioVisualizerCanvas"');
+    const hasCanvasClass = typeof musicCheck.body === 'string' && musicCheck.body.includes('class="audio-visualizer-canvas"');
+    const hasBarsMode = typeof musicCheck.body === 'string' && musicCheck.body.includes('data-mode="bars"');
+    const hasWaveMode = typeof musicCheck.body === 'string' && musicCheck.body.includes('data-mode="wave"');
+    const hasRadialMode = typeof musicCheck.body === 'string' && musicCheck.body.includes('data-mode="radial"');
+    const hasToggleBtn = typeof musicCheck.body === 'string' && musicCheck.body.includes('id="visualizerToggleBtn"');
+    console.log('    Status:', musicCheck.statusCode, '| Visualizer Container:', hasVisualizerContainer, '| Canvas:', hasVisualizerCanvas, '| Canvas Class:', hasCanvasClass, '| Modes (Bars, Wave, Radial):', hasBarsMode && hasWaveMode && hasRadialMode, '| Toggle:', hasToggleBtn);
 
     console.log('\nAll Express.js routes, EJS Templates, and Music API Endpoints executed cleanly in-process!');
   } catch (err) {

@@ -31,17 +31,19 @@ class MusicApiService {
         };
     }
 
-    async getTrending(limit = 12) {
-        const cacheKey = `trending_${limit}`;
+    async getTrending(limit = 16, genre = '') {
+        const cacheKey = `trending_${genre}_${limit}`;
         if (this.cache.has(cacheKey)) {
             return this.cache.get(cacheKey);
         }
 
+        const genreParam = genre ? `&genre=${encodeURIComponent(genre)}` : '';
+
         // Try Express backend proxy first
         try {
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 4000);
-            const res = await fetch(`/api/music/trending?limit=${limit}`, { signal: controller.signal });
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            const res = await fetch(`/api/music/trending?limit=${limit}${genreParam}`, { signal: controller.signal });
             clearTimeout(timeout);
             if (res.ok) {
                 const json = await res.json();
@@ -59,7 +61,7 @@ class MusicApiService {
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 6000);
-            const res = await fetch(`${AUDIUS_HOST}/tracks/trending?app_name=${AUDIUS_APP_NAME}&limit=${limit}`, { signal: controller.signal });
+            const res = await fetch(`${AUDIUS_HOST}/tracks/trending?app_name=${AUDIUS_APP_NAME}&limit=${limit}${genreParam}`, { signal: controller.signal });
             clearTimeout(timeout);
             if (res.ok) {
                 const json = await res.json();
@@ -75,6 +77,76 @@ class MusicApiService {
 
         // Fallback to local playlist
         return typeof playlist !== 'undefined' ? playlist : [];
+    }
+
+    async getFeed() {
+        const cacheKey = 'home_feed';
+        if (this.cache.has(cacheKey)) {
+            return this.cache.get(cacheKey);
+        }
+
+        // Try Express backend proxy /api/music/feed
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch('/api/music/feed', { signal: controller.signal });
+            clearTimeout(timeout);
+            if (res.ok) {
+                const json = await res.json();
+                if (json.success) {
+                    const normList = (arr) => (Array.isArray(arr) ? arr.map(t => this.normalizeTrack(t)) : []);
+                    const feed = {
+                        trending: normList(json.trending),
+                        pop: normList(json.pop),
+                        electronic: normList(json.electronic),
+                        hiphop: normList(json.hiphop),
+                        chill: normList(json.chill),
+                        bollywood: normList(json.bollywood),
+                        romance: normList(json.romance),
+                        punjabi: normList(json.punjabi)
+                    };
+                    this.cache.set(cacheKey, feed);
+                    return feed;
+                }
+            }
+        } catch (e) {}
+
+        // Fallback using direct Audius trending
+        const trending = await this.getTrending(24);
+        return {
+            trending: trending.slice(0, 10),
+            pop: trending.slice(2, 9),
+            electronic: trending.slice(4, 11),
+            hiphop: trending.slice(6, 13),
+            chill: trending.slice(8, 15),
+            bollywood: trending.slice(0, 10),
+            romance: trending.slice(2, 8),
+            punjabi: trending.slice(3, 9)
+        };
+    }
+
+    async getBollywood(limit = 24) {
+        const cacheKey = `bollywood_${limit}`;
+        if (this.cache.has(cacheKey)) {
+            return this.cache.get(cacheKey);
+        }
+
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            const res = await fetch(`/api/music/bollywood?limit=${limit}`, { signal: controller.signal });
+            clearTimeout(timeout);
+            if (res.ok) {
+                const json = await res.json();
+                if (json.success && Array.isArray(json.tracks)) {
+                    const tracks = json.tracks.map(t => this.normalizeTrack(t));
+                    this.cache.set(cacheKey, tracks);
+                    return tracks;
+                }
+            }
+        } catch (e) {}
+
+        return this.search('Bollywood', limit);
     }
 
     async search(query, limit = 15) {

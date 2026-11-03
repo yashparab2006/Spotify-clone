@@ -43,7 +43,14 @@ app.use('/html', express.static(path.join(rootDir, 'html')));
 app.use('/css', express.static(path.join(rootDir, 'css')));
 app.use('/js', express.static(path.join(rootDir, 'js')));
 app.use('/assesst', express.static(path.join(rootDir, 'assesst')));
-app.use('/bundle.js', express.static(path.join(rootDir, 'bundle.js')));
+app.get('/bundle.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.join(rootDir, 'bundle.js'));
+});
+app.get('/html/bundle.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.join(rootDir, 'bundle.js'));
+});
 
 // Health Check API
 app.get('/api/health', (req, res) => {
@@ -72,7 +79,7 @@ app.use('/api/music', require('./routes/musicApiRoutes'));
 // =========================================================================
 
 // Home View (Dynamic Tracks, Greeting, and Playlists)
-app.get('/', (req, res) => {
+app.get(['/', '/home'], (req, res) => {
   const tracks = store.getTracks();
   const data = store.readData();
   const user = data.users && data.users[0] ? data.users[0] : null;
@@ -86,7 +93,7 @@ app.get('/music', (req, res) => {
   const data = store.readData();
   const user = data.users && data.users[0] ? data.users[0] : null;
   const playlists = store.getPlaylists(user ? user.id : 1);
-  res.render('index', { tracks, user, playlists });
+  res.render('index', { tracks, user, playlists, activePage: 'music' });
 });
 
 app.get('/music.html', (req, res) => {
@@ -145,6 +152,28 @@ app.get('/profile', (req, res) => {
   res.render('profile', { user, playlists, likes });
 });
 
+// Auth / Login / Sign Up View
+app.get(['/auth', '/login', '/signup', '/register'], (req, res) => {
+  const data = store.readData();
+  const user = data.users && data.users[0] ? data.users[0] : null;
+  const playlists = store.getPlaylists(user ? user.id : 1);
+  const tab = req.query.tab || (req.path.includes('signup') || req.path.includes('register') ? 'register' : 'login');
+  res.render('auth', { user, playlists, tab });
+});
+
+// Create Playlist View (Directs to Library)
+app.get(['/create-playlist', '/create-playlist.html'], (req, res) => {
+  res.redirect('/library');
+});
+
+// Handle .html extensions cleanly
+app.get('/:page.html', (req, res, next) => {
+  const p = req.params.page;
+  if (['index', 'home'].includes(p)) return res.redirect('/');
+  if (['search', 'library', 'podcasts', 'premium', 'profile', 'auth', 'login', 'signup'].includes(p)) return res.redirect('/' + p);
+  next();
+});
+
 // Footer Pages Dictionary (Universal SSR Detail Rendering)
 const footerPageMap = {
   about: { title: "About Us", category: "Company", tagline: "Band together for the future of audio.", highlights: [{ heading: "626M+ Listeners", text: "Active music fans around the world." }, { heading: "100M+ Songs", text: "Unrivaled global audio catalog." }], paragraphs: ["Spotify transformed music listening forever when it launched in 2008. Today, more than 626 million people in 184 markets use Spotify to discover, manage, and share audio.", "Our mission is to unlock the potential of human creativity by giving artists the opportunity to live off their art and billions of fans the opportunity to enjoy it."] },
@@ -158,7 +187,7 @@ const footerPageMap = {
   'safety-privacy-center': { title: "Safety & Privacy Center", category: "Legal & Privacy", tagline: "Tools, guides, and policies to protect your privacy and account security.", highlights: [{ heading: "Account Protection", text: "Two-factor authentication and login alerts." }, { heading: "Content Safety", text: "Proactive reporting tools for abusive media." }], paragraphs: ["Our Safety & Privacy Center gives you control over who sees your activity, your playlists, and your personal profile."] }
 };
 
-app.get(['/footer/:slug', '/:slug(about|jobs|for-the-record|for-artists|developers|legal|privacy-policy|cookies|safety-privacy-center|about-ads|accessibility)'], (req, res) => {
+app.get(['/footer/:slug', '/:slug(about|jobs|for-the-record|for-artists|for-creator|for-creators|for-author|for-authors|developers|adversting|advertising|investor|investors|vendor|vendors|support|free-mobile-app|popluar-for-country|popular-by-country|top-song-lryics|top-song-lyrics|import-your-music|premium-standard|premium-plaitium|premium-platinum|premium-student|spotify-free|legal|privacy-policy|cookies|safety-privacy-center|about-ads|accessibility)'], (req, res) => {
   const slug = req.params.slug;
   const page = footerPageMap[slug] || {
     title: slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),

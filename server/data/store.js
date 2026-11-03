@@ -253,18 +253,36 @@ module.exports = {
   getTracks(query = {}) {
     const data = readData();
     let result = [...data.tracks];
+    try {
+      const files = [
+        path.join(__dirname, 'bollywood_tracks.json'),
+        path.join(__dirname, 'audius_tracks.json')
+      ];
+      const existingIds = new Set(result.map(t => String(t.id)));
+      for (const f of files) {
+        if (fs.existsSync(f)) {
+          const list = JSON.parse(fs.readFileSync(f, 'utf8'));
+          list.forEach(at => {
+            if (!existingIds.has(String(at.id))) {
+              existingIds.add(String(at.id));
+              result.push(at);
+            }
+          });
+        }
+      }
+    } catch (e) {}
     if (query.q) {
       const q = query.q.toLowerCase().trim();
-      result = result.filter(t => t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q));
+      result = result.filter(t => (t.title && t.title.toLowerCase().includes(q)) || (t.artist && t.artist.toLowerCase().includes(q)));
     }
     if (query.genre) {
-      result = result.filter(t => t.genre.toLowerCase().includes(query.genre.toLowerCase()));
+      result = result.filter(t => t.genre && t.genre.toLowerCase().includes(query.genre.toLowerCase()));
     }
     return result;
   },
   getTrackById(id) {
-    const data = readData();
-    return data.tracks.find(t => t.id === Number(id)) || null;
+    const all = this.getTracks();
+    return all.find(t => String(t.id) === String(id)) || null;
   },
 
   // Playlists

@@ -1,58 +1,54 @@
-        <!-- ========== RIGHT SIDEBAR (Collapsible Rail & Sliding Window) ========== -->
+        <!-- ========== RIGHT SIDEBAR (SLIDING RAIL & EXPANDED PANEL) ========== -->
         <div class="right-sidebar collapsed" id="rightSidebar">
-            <!-- Collapsed Rail Bar -->
-            <div class="right-rail-collapsed" id="rightSidebarRail" title="Now playing view">
-                <button class="rail-expand-btn" id="rightSidebarRailBtn" type="button" aria-label="Expand Now Playing view">
-                    <i class="fa-solid fa-chevron-left rail-expand-chevron"></i>
+            <!-- Draggable Left Sash to Slide / Resize Window -->
+            <div class="right-sidebar-slide-sash" id="rightSidebarSlideSash" title="Drag to slide window"></div>
+
+            <!-- 1. Collapsed Rail View (Matches User Screenshot 2) -->
+            <div class="right-sidebar-rail" id="rightSidebarRail" title="Now playing view">
+                <button class="rail-expand-btn" id="railExpandBtn" title="Now playing view" aria-label="Expand right sidebar">
+                    <i class="fa-solid fa-chevron-left"></i>
+                    <span class="custom-tooltip">Now playing view</span>
                 </button>
-                <div class="custom-tooltip">Now playing view</div>
             </div>
 
-            <!-- Drag Sash Handle -->
-            <div class="right-sidebar-sash" id="rightSidebarSash" title="Drag to resize / pull to open">
-                <div class="sash-grip-line"></div>
-            </div>
-
-            <!-- Expanded Window Container -->
-            <div class="right-sidebar-expanded-window" id="rightSidebarExpandedWindow">
-                <div class="right-sidebar-top-bar">
-                    <button class="right-sidebar-collapse-btn" id="rightSidebarCollapseBtn" type="button" title="Close Now playing view" aria-label="Collapse Now Playing view">
-                        <i class="fa-solid fa-chevron-right"></i>
+            <!-- 2. Expanded Panel View (Matches User Screenshot 1) -->
+            <div class="right-sidebar-expanded-content" id="rightSidebarExpanded">
+                <div class="right-sidebar-header">
+                    <button class="right-sidebar-icon-btn" id="closeRightSidebarBtn" title="Collapse sidebar" aria-label="Collapse right sidebar">
+                        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M1 3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3zm1.5 0v10a.5.5 0 0 0 .5.5H13a.5.5 0 0 0 .5-.5V3a.5.5 0 0 0-.5-.5H3a.5.5 0 0 0-.5.5zm8 2.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zM5.354 5.646a.5.5 0 1 0-.708.708L6.293 8l-1.647 1.646a.5.5 0 0 0 .708.708l2-2a.5.5 0 0 0 0-.708l-2-2z"/>
+                        </svg>
                     </button>
-                    <span class="right-sidebar-window-title" id="rightSidebarHeaderTitle">Find something to play</span>
-                    <button class="right-sidebar-menu-btn" type="button" title="More options" aria-label="More options">
-                        <i class="fa-solid fa-ellipsis"></i>
-                    </button>
+                    <span class="right-sidebar-header-title" id="rightSidebarHeaderTitle">Now playing</span>
+                    <div style="width:36px;"></div>
                 </div>
 
-                <!-- Empty / Standby State -->
-                <div class="right-sidebar-empty-state" id="rightSidebarEmptyState">
-                    <h2 class="empty-state-title">Find something to play</h2>
-                    <a href="/search" class="badge empty-state-search-btn" id="rightSidebarEmptySearchBtn" style="text-decoration:none;">Search</a>
+                <!-- Empty State: Matches User Screenshot -->
+                <div class="right-sidebar-empty" id="rightSidebarEmpty">
+                    <h2 class="right-sidebar-title">Find something to play</h2>
+                    <a href="/search" class="badge search-pill-btn" id="rightSidebarSearchBtn" style="text-decoration:none; display:inline-block; text-align:center;">Search</a>
                 </div>
 
                 <!-- Active Now Playing Content -->
-                <div class="right-sidebar-playing-content" id="rightSidebarPlayingContent" style="display:none;">
-                    <div class="right-sidebar-art-box">
-                        <img src="/assesst/card1img.jpeg" id="rightSidebarArt" alt="Track Art" class="right-sidebar-art">
+                <div class="right-sidebar-content" id="rightSidebarContent" style="display:none;">
+                    <div class="now-playing-cover-wrapper">
+                        <img src="/assesst/card1img.jpeg" id="rightSidebarCover" alt="Cover" class="now-playing-large-cover" onerror="this.onerror=null;this.src='/assesst/card1img.jpeg';">
                     </div>
-                    <div class="right-sidebar-track-meta">
-                        <div class="right-sidebar-track-text">
-                            <h3 class="right-sidebar-track-name" id="rightSidebarTrackName">Top 50 - Global</h3>
-                            <p class="right-sidebar-track-artist" id="rightSidebarTrackArtist">Spotify Charts</p>
+                    <div class="now-playing-meta">
+                        <div class="now-playing-titles">
+                            <h3 class="now-playing-track-title" id="rightSidebarTrackTitle">Top 50 - Global</h3>
+                            <p class="now-playing-track-artist" id="rightSidebarTrackArtist">Spotify Charts</p>
                         </div>
-                        <button class="right-sidebar-action-btn" type="button" title="Save to Your Library">
-                            <i class="fa-regular fa-heart now-playing-like-btn" id="rightSidebarLikeBtn"></i>
-                        </button>
+                        <i class="fa-regular fa-heart now-playing-like-btn" id="rightSidebarLikeBtn" title="Save to Your Library"></i>
                     </div>
 
-                    <!-- About the artist card -->
-                    <div class="about-artist-card">
+                    <!-- About the Artist Card -->
+                    <div class="about-artist-card" id="rightSidebarArtistCard">
                         <div class="about-artist-header">
-                            <img src="/assesst/card1img.jpeg" id="rightSidebarArtistImg" alt="Artist">
+                            <img src="/assesst/card1img.jpeg" id="rightSidebarArtistImg" class="about-artist-avatar" alt="Artist" onerror="this.onerror=null;this.src='/assesst/card1img.jpeg';">
                             <div class="about-artist-info">
-                                <span class="about-artist-badge">Verified Artist</span>
-                                <h4 id="rightSidebarArtistName">Spotify Charts</h4>
+                                <h4>About the artist</h4>
+                                <span id="rightSidebarArtistName">Spotify Charts</span>
                             </div>
                         </div>
                         <p class="about-artist-bio" id="rightSidebarArtistBio">Your daily update of the most played tracks right now.</p>
@@ -69,7 +65,7 @@
                             <button class="queue-open-link" id="rightSidebarOpenQueueBtn">Open queue</button>
                         </div>
                         <div class="queue-next-track" id="rightSidebarNextTrack">
-                            <img src="/assesst/card2img.jpeg" id="rightSidebarNextImg" alt="Next">
+                            <img src="/assesst/card2img.jpeg" id="rightSidebarNextImg" alt="Next" onerror="this.onerror=null;this.src='/assesst/card2img.jpeg';">
                             <div class="queue-next-meta">
                                 <span class="queue-next-name" id="rightSidebarNextName">Daily Mix 1</span>
                                 <span class="queue-next-artist" id="rightSidebarNextArtist">Spotify</span>
@@ -79,4 +75,3 @@
                 </div>
             </div>
         </div>
-

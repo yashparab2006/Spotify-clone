@@ -231,17 +231,19 @@ class MusicApiService {
         };
     }
 
-    async getTrending(limit = 12) {
-        const cacheKey = `trending_${limit}`;
+    async getTrending(limit = 16, genre = '') {
+        const cacheKey = `trending_${genre}_${limit}`;
         if (this.cache.has(cacheKey)) {
             return this.cache.get(cacheKey);
         }
 
+        const genreParam = genre ? `&genre=${encodeURIComponent(genre)}` : '';
+
         // Try Express backend proxy first
         try {
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 4000);
-            const res = await fetch(`/api/music/trending?limit=${limit}`, { signal: controller.signal });
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            const res = await fetch(`/api/music/trending?limit=${limit}${genreParam}`, { signal: controller.signal });
             clearTimeout(timeout);
             if (res.ok) {
                 const json = await res.json();
@@ -259,7 +261,7 @@ class MusicApiService {
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 6000);
-            const res = await fetch(`${AUDIUS_HOST}/tracks/trending?app_name=${AUDIUS_APP_NAME}&limit=${limit}`, { signal: controller.signal });
+            const res = await fetch(`${AUDIUS_HOST}/tracks/trending?app_name=${AUDIUS_APP_NAME}&limit=${limit}${genreParam}`, { signal: controller.signal });
             clearTimeout(timeout);
             if (res.ok) {
                 const json = await res.json();
@@ -275,6 +277,76 @@ class MusicApiService {
 
         // Fallback to local playlist
         return typeof playlist !== 'undefined' ? playlist : [];
+    }
+
+    async getFeed() {
+        const cacheKey = 'home_feed';
+        if (this.cache.has(cacheKey)) {
+            return this.cache.get(cacheKey);
+        }
+
+        // Try Express backend proxy /api/music/feed
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch('/api/music/feed', { signal: controller.signal });
+            clearTimeout(timeout);
+            if (res.ok) {
+                const json = await res.json();
+                if (json.success) {
+                    const normList = (arr) => (Array.isArray(arr) ? arr.map(t => this.normalizeTrack(t)) : []);
+                    const feed = {
+                        trending: normList(json.trending),
+                        pop: normList(json.pop),
+                        electronic: normList(json.electronic),
+                        hiphop: normList(json.hiphop),
+                        chill: normList(json.chill),
+                        bollywood: normList(json.bollywood),
+                        romance: normList(json.romance),
+                        punjabi: normList(json.punjabi)
+                    };
+                    this.cache.set(cacheKey, feed);
+                    return feed;
+                }
+            }
+        } catch (e) {}
+
+        // Fallback using direct Audius trending
+        const trending = await this.getTrending(24);
+        return {
+            trending: trending.slice(0, 10),
+            pop: trending.slice(2, 9),
+            electronic: trending.slice(4, 11),
+            hiphop: trending.slice(6, 13),
+            chill: trending.slice(8, 15),
+            bollywood: trending.slice(0, 10),
+            romance: trending.slice(2, 8),
+            punjabi: trending.slice(3, 9)
+        };
+    }
+
+    async getBollywood(limit = 24) {
+        const cacheKey = `bollywood_${limit}`;
+        if (this.cache.has(cacheKey)) {
+            return this.cache.get(cacheKey);
+        }
+
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            const res = await fetch(`/api/music/bollywood?limit=${limit}`, { signal: controller.signal });
+            clearTimeout(timeout);
+            if (res.ok) {
+                const json = await res.json();
+                if (json.success && Array.isArray(json.tracks)) {
+                    const tracks = json.tracks.map(t => this.normalizeTrack(t));
+                    this.cache.set(cacheKey, tracks);
+                    return tracks;
+                }
+            }
+        } catch (e) {}
+
+        return this.search('Bollywood', limit);
     }
 
     async search(query, limit = 15) {
@@ -366,16 +438,39 @@ const musicApi = new MusicApiService();
 
 const playlist = [
     {
-        id: 1,
-        title: "Top 50 - Global",
-        artist: "Spotify Charts",
-        img: "./assesst/card1img.jpeg",
-        duration: 213,
-        streamUrl: "https://api.audius.co/v1/tracks/W08NKdZ/stream?app_name=SPOTIFY_CLONE",
-        rootFreq: 261.63,
-        chords: [[261.63, 329.63, 392.00], [220.00, 261.63, 329.63], [174.61, 220.00, 261.63], [196.00, 246.94, 293.66]],
-        tempo: 104,
-        lyrics: [
+        "id": 1,
+        "title": "Top 50 - Global",
+        "artist": "Spotify Charts",
+        "img": "./assesst/card1img.jpeg",
+        "duration": 213,
+        "streamUrl": "https://api.audius.co/v1/tracks/W08NKdZ/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Pop / Charts",
+        "category": "Trending",
+        "rootFreq": 261.63,
+        "chords": [
+            [
+                261.63,
+                329.63,
+                392
+            ],
+            [
+                220,
+                261.63,
+                329.63
+            ],
+            [
+                174.61,
+                220,
+                261.63
+            ],
+            [
+                196,
+                246.94,
+                293.66
+            ]
+        ],
+        "tempo": 104,
+        "lyrics": [
             "♪ Welcome to the Top 50 - Global countdown ♪",
             "Trending all across the worldwide waves",
             "Number one vibes taking over the stage",
@@ -384,16 +479,39 @@ const playlist = [
         ]
     },
     {
-        id: 2,
-        title: "Mahiya Jinna Sohna",
-        artist: "Darshan Raval",
-        img: "./assesst/card2img.jpeg",
-        duration: 195,
-        streamUrl: "https://api.audius.co/v1/tracks/r70GlbZ/stream?app_name=SPOTIFY_CLONE",
-        rootFreq: 293.66,
-        chords: [[293.66, 369.99, 440.00], [246.94, 293.66, 369.99], [196.00, 246.94, 293.66], [220.00, 277.18, 329.63]],
-        tempo: 92,
-        lyrics: [
+        "id": 2,
+        "title": "Mahiya Jinna Sohna",
+        "artist": "Darshan Raval",
+        "img": "./assesst/card2img.jpeg",
+        "duration": 195,
+        "streamUrl": "https://api.audius.co/v1/tracks/r70GlbZ/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Romantic / Bollywood",
+        "category": "Bollywood",
+        "rootFreq": 293.66,
+        "chords": [
+            [
+                293.66,
+                369.99,
+                440
+            ],
+            [
+                246.94,
+                293.66,
+                369.99
+            ],
+            [
+                196,
+                246.94,
+                293.66
+            ],
+            [
+                220,
+                277.18,
+                329.63
+            ]
+        ],
+        "tempo": 92,
+        "lyrics": [
             "♪ Tu hi meri zindagani, tu hi chain mera ♪",
             "Mahiya jinna sohna koi hor na mileya",
             "Akhiyan ch teri bas khwab sajaake",
@@ -401,16 +519,39 @@ const playlist = [
         ]
     },
     {
-        id: 3,
-        title: "Mere Paas Tum Ho",
-        artist: "Rahat Fateh Ali Khan",
-        img: "./assesst/card3img.jpeg",
-        duration: 248,
-        streamUrl: "https://api.audius.co/v1/tracks/zz0MEGP/stream?app_name=SPOTIFY_CLONE",
-        rootFreq: 220.00,
-        chords: [[220.00, 261.63, 329.63], [174.61, 220.00, 261.63], [196.00, 246.94, 293.66], [164.81, 207.65, 246.94]],
-        tempo: 78,
-        lyrics: [
+        "id": 3,
+        "title": "Mere Paas Tum Ho",
+        "artist": "Rahat Fateh Ali Khan",
+        "img": "./assesst/card3img.jpeg",
+        "duration": 248,
+        "streamUrl": "https://api.audius.co/v1/tracks/zz0MEGP/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Sufi / Soul",
+        "category": "Bollywood",
+        "rootFreq": 220,
+        "chords": [
+            [
+                220,
+                261.63,
+                329.63
+            ],
+            [
+                174.61,
+                220,
+                261.63
+            ],
+            [
+                196,
+                246.94,
+                293.66
+            ],
+            [
+                164.81,
+                207.65,
+                246.94
+            ]
+        ],
+        "tempo": 78,
+        "lyrics": [
             "♪ Bhool jaane ka hunar mujhko sikhate jaao ♪",
             "Ja rahe ho toh sabhi naqsh mitaate jaao",
             "Chalo maana ki yeh kismat ka faisla tha",
@@ -418,16 +559,39 @@ const playlist = [
         ]
     },
     {
-        id: 4,
-        title: "Naa Ready - Leo",
-        artist: "Anirudh Ravichander, Thalapathy Vijay",
-        img: "./assesst/card4img.jpeg",
-        duration: 188,
-        streamUrl: "https://api.audius.co/v1/tracks/87GrbyW/stream?app_name=SPOTIFY_CLONE",
-        rootFreq: 329.63,
-        chords: [[164.81, 196.00, 246.94], [174.61, 220.00, 261.63], [196.00, 246.94, 293.66], [164.81, 196.00, 246.94]],
-        tempo: 128,
-        lyrics: [
+        "id": 4,
+        "title": "Naa Ready - Leo",
+        "artist": "Anirudh Ravichander, Thalapathy Vijay",
+        "img": "./assesst/card4img.jpeg",
+        "duration": 188,
+        "streamUrl": "https://api.audius.co/v1/tracks/87GrbyW/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Soundtrack / Dance",
+        "category": "Trending",
+        "rootFreq": 329.63,
+        "chords": [
+            [
+                164.81,
+                196,
+                246.94
+            ],
+            [
+                174.61,
+                220,
+                261.63
+            ],
+            [
+                196,
+                246.94,
+                293.66
+            ],
+            [
+                164.81,
+                196,
+                246.94
+            ]
+        ],
+        "tempo": 128,
+        "lyrics": [
             "♪ Aagasam idikithu, aalungallum aaduthu ♪",
             "Naa ready thaan varava, aiyya thaaru maara varava",
             "Thannanthani aalaaga vaaren da",
@@ -435,16 +599,39 @@ const playlist = [
         ]
     },
     {
-        id: 5,
-        title: "Starboy",
-        artist: "The Weeknd, Daft Punk",
-        img: "./assesst/card3img.jpeg",
-        duration: 230,
-        streamUrl: "https://api.audius.co/v1/tracks/WYKbAE6/stream?app_name=SPOTIFY_CLONE",
-        rootFreq: 246.94,
-        chords: [[246.94, 293.66, 369.99], [220.00, 261.63, 329.63], [196.00, 246.94, 293.66], [246.94, 293.66, 369.99]],
-        tempo: 112,
-        lyrics: [
+        "id": 5,
+        "title": "Starboy",
+        "artist": "The Weeknd, Daft Punk",
+        "img": "./assesst/card3img.jpeg",
+        "duration": 230,
+        "streamUrl": "https://api.audius.co/v1/tracks/WYKbAE6/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Pop / R&B",
+        "category": "Pop",
+        "rootFreq": 246.94,
+        "chords": [
+            [
+                246.94,
+                293.66,
+                369.99
+            ],
+            [
+                220,
+                261.63,
+                329.63
+            ],
+            [
+                196,
+                246.94,
+                293.66
+            ],
+            [
+                246.94,
+                293.66,
+                369.99
+            ]
+        ],
+        "tempo": 112,
+        "lyrics": [
             "♪ I'm trying to put you in the worst mood, ah ♪",
             "P1 cleaner than your church shoes, ah",
             "Look what you've done",
@@ -452,16 +639,39 @@ const playlist = [
         ]
     },
     {
-        id: 6,
-        title: "Blinding Lights",
-        artist: "The Weeknd",
-        img: "./assesst/card4img.jpeg",
-        duration: 200,
-        streamUrl: "https://api.audius.co/v1/tracks/y8rNVYP/stream?app_name=SPOTIFY_CLONE",
-        rootFreq: 349.23,
-        chords: [[349.23, 440.00, 523.25], [293.66, 349.23, 440.00], [261.63, 329.63, 392.00], [196.00, 246.94, 293.66]],
-        tempo: 130,
-        lyrics: [
+        "id": 6,
+        "title": "Blinding Lights",
+        "artist": "The Weeknd",
+        "img": "./assesst/card4img.jpeg",
+        "duration": 200,
+        "streamUrl": "https://api.audius.co/v1/tracks/y8rNVYP/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Synthwave / Pop",
+        "category": "Pop",
+        "rootFreq": 349.23,
+        "chords": [
+            [
+                349.23,
+                440,
+                523.25
+            ],
+            [
+                293.66,
+                349.23,
+                440
+            ],
+            [
+                261.63,
+                329.63,
+                392
+            ],
+            [
+                196,
+                246.94,
+                293.66
+            ]
+        ],
+        "tempo": 130,
+        "lyrics": [
             "♪ I've been on my own for long enough ♪",
             "Maybe you can show me how to love, maybe",
             "I'm blinded by the lights",
@@ -469,52 +679,1410 @@ const playlist = [
         ]
     },
     {
-        id: 7,
-        title: "Top Songs - Global",
-        artist: "Weekly Music Charts",
-        img: "./assesst/card5img.jpeg",
-        duration: 222,
-        streamUrl: "https://api.audius.co/v1/tracks/Ma6qb3x/stream?app_name=SPOTIFY_CLONE",
-        rootFreq: 261.63,
-        chords: [[261.63, 329.63, 392.00], [196.00, 246.94, 293.66], [220.00, 261.63, 329.63], [174.61, 220.00, 261.63]],
-        tempo: 100,
-        lyrics: [
+        "id": 7,
+        "title": "Top Songs - Global",
+        "artist": "Weekly Music Charts",
+        "img": "./assesst/card5img.jpeg",
+        "duration": 222,
+        "streamUrl": "https://api.audius.co/v1/tracks/Ma6qb3x/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Top Charts",
+        "category": "Trending",
+        "rootFreq": 261.63,
+        "chords": [
+            [
+                261.63,
+                329.63,
+                392
+            ],
+            [
+                196,
+                246.94,
+                293.66
+            ],
+            [
+                220,
+                261.63,
+                329.63
+            ],
+            [
+                174.61,
+                220,
+                261.63
+            ]
+        ],
+        "tempo": 100,
+        "lyrics": [
             "♪ Global vibes spinning all week long ♪",
             "Catch the sound of the world in a single song",
             "Melodies in flight under the northern sky"
         ]
     },
     {
-        id: 8,
-        title: "Top Songs - India",
-        artist: "Weekly Music Charts - India",
-        img: "./assesst/card6img.jpeg",
-        duration: 175,
-        streamUrl: "https://api.audius.co/v1/tracks/7MWpzKW/stream?app_name=SPOTIFY_CLONE",
-        rootFreq: 293.66,
-        chords: [[293.66, 369.99, 440.00], [220.00, 261.63, 329.63], [196.00, 246.94, 293.66], [220.00, 277.18, 329.63]],
-        tempo: 108,
-        lyrics: [
+        "id": 8,
+        "title": "Top Songs - India",
+        "artist": "Weekly Music Charts - India",
+        "img": "./assesst/card6img.jpeg",
+        "duration": 175,
+        "streamUrl": "https://api.audius.co/v1/tracks/7MWpzKW/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Indian Hits",
+        "category": "Bollywood",
+        "rootFreq": 293.66,
+        "chords": [
+            [
+                293.66,
+                369.99,
+                440
+            ],
+            [
+                220,
+                261.63,
+                329.63
+            ],
+            [
+                196,
+                246.94,
+                293.66
+            ],
+            [
+                220,
+                277.18,
+                329.63
+            ]
+        ],
+        "tempo": 108,
+        "lyrics": [
             "♪ Desi beats and rhythms that never cease ♪",
             "Bollywood magic and regional masterpiece",
             "Dance through the streets till the break of day"
         ]
     },
     {
-        id: 9,
-        title: "Trending Chill Hits",
-        artist: "Spotify Curated",
-        img: "./assesst/card1img.jpeg",
-        duration: 205,
-        streamUrl: "https://api.audius.co/v1/tracks/XkZ4wW7/stream?app_name=SPOTIFY_CLONE",
-        rootFreq: 220.00,
-        chords: [[220.00, 261.63, 329.63], [174.61, 220.00, 261.63], [261.63, 329.63, 392.00], [196.00, 246.94, 293.66]],
-        tempo: 84,
-        lyrics: [
+        "id": 9,
+        "title": "Trending Chill Hits",
+        "artist": "Spotify Curated",
+        "img": "./assesst/card1img.jpeg",
+        "duration": 205,
+        "streamUrl": "https://api.audius.co/v1/tracks/XkZ4wW7/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Chillhop / Lo-Fi",
+        "category": "Ambient",
+        "rootFreq": 220,
+        "chords": [
+            [
+                220,
+                261.63,
+                329.63
+            ],
+            [
+                174.61,
+                220,
+                261.63
+            ],
+            [
+                261.63,
+                329.63,
+                392
+            ],
+            [
+                196,
+                246.94,
+                293.66
+            ]
+        ],
+        "tempo": 84,
+        "lyrics": [
             "♪ Gentle breeze softly drifting by ♪",
             "Lo-fi frequencies soothing your mind",
             "Take a deep breath and let the worries unwind"
         ]
+    },
+    {
+        "id": "W08NKdZ",
+        "title": "iLLPeTiLL - Post HospitiLL Slapperzzz Mix (Audius Exclusive)",
+        "artist": "@iLLPeTiLL",
+        "img": "https://audius-01.staked.cloud/content/baeaaaiqsedszpcmjuiem7b5qilvws4622vnsrht4ybnlqldmfzgxogcogawsa/480x480.jpg",
+        "duration": 394,
+        "streamUrl": "https://api.audius.co/v1/tracks/W08NKdZ/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Electronic",
+        "category": "Trending",
+        "source": "audius"
+    },
+    {
+        "id": "r70GlbZ",
+        "title": "LOUDWERX - Bass Go Boom ft. Magic & Bird",
+        "artist": "LOUDWERX",
+        "img": "https://audius-content-10.figment.io/content/baeaaaiqsedv77iyejev2g7fmngtxea47joo45fnvx3h2mmcg46fhrl4fw6c2e/480x480.jpg",
+        "duration": 156,
+        "streamUrl": "https://api.audius.co/v1/tracks/r70GlbZ/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Electronic",
+        "category": "Trending",
+        "source": "audius"
+    },
+    {
+        "id": "zz0MEGP",
+        "title": "3BallMTY, La Goony, Miss Bashful, dj g2g - Chicas Tribaleras",
+        "artist": "3BallMTY",
+        "img": "https://audius-content-13.figment.io/content/baeaaaiqsebv2y3vywliftwqnrwss35yw6pc5rr2pxopojuh4ap5jqbontmvog/480x480.jpg",
+        "duration": 171,
+        "streamUrl": "https://api.audius.co/v1/tracks/zz0MEGP/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Latin",
+        "category": "Trending",
+        "source": "audius"
+    },
+    {
+        "id": "87GrbyW",
+        "title": "Elastic Illusions",
+        "artist": "ShrivL",
+        "img": "https://audius-02.staked.cloud/content/baeaaaiqsedfcwrasripxf5oypr7xaj72neg5lv64e4pqqcvsiw4nb2mmmu4iq/480x480.jpg",
+        "duration": 231,
+        "streamUrl": "https://api.audius.co/v1/tracks/87GrbyW/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Electronic",
+        "category": "Trending",
+        "source": "audius"
+    },
+    {
+        "id": "WYKbAE6",
+        "title": "I GOT DAT",
+        "artist": "Remy Heart 🖤",
+        "img": "https://audius-content-14.figment.io/content/baeaaaiqseauevfl2vwzii5msnrybpatr6b7ivj2fdi57jt4nedsf5btxh5b6a/480x480.jpg",
+        "duration": 181,
+        "streamUrl": "https://api.audius.co/v1/tracks/WYKbAE6/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Trap",
+        "category": "Trending",
+        "source": "audius"
+    },
+    {
+        "id": "Ma6qb3x",
+        "title": "Deadly Combo [DISKADE AND OHNOITSDOUG BOOTLEG] ",
+        "artist": "DISKADE",
+        "img": "https://audius-content-3.figment.io/content/baeaaaiqsea7qfsfrvfql7yfawextntwzkalfepab7uj3smz6hrn7lu7jvq7vc/480x480.jpg",
+        "duration": 304,
+        "streamUrl": "https://api.audius.co/v1/tracks/Ma6qb3x/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Dubstep",
+        "category": "Trending",
+        "source": "audius"
+    },
+    {
+        "id": "y8rNVYP",
+        "title": "Trianglory - herewithme (False Dawn Remix)",
+        "artist": "False Dawn",
+        "img": "https://v.monophonic.digital/content/baeaaaiqsebp6m62ecizabqrfrjqae4afsyrfa655pie2nd3l2anpdpyhqtkri/480x480.jpg",
+        "duration": 237,
+        "streamUrl": "https://api.audius.co/v1/tracks/y8rNVYP/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Dubstep",
+        "category": "Trending",
+        "source": "audius"
+    },
+    {
+        "id": "7MWpzKW",
+        "title": "Tahoe",
+        "artist": "Andrew Lux",
+        "img": "https://v.audius.rickyrombo.com/content/baeaaaiqsed3iug5hq6bs3u6mbthes27yjsfm2jwzsipqjzydu7wh7qn4fjyas/480x480.jpg",
+        "duration": 226,
+        "streamUrl": "https://api.audius.co/v1/tracks/7MWpzKW/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Deep House",
+        "category": "Trending",
+        "source": "audius"
+    },
+    {
+        "id": "3J4gk28",
+        "title": "Big Boy Shoes (Original Mix)",
+        "artist": "GORDO DJ (BR)",
+        "img": "https://v.monophonic.digital/content/baeaaaiqsecroc4g47rgw2tfc3h5wwfyflg4ta2bmae3hv7n5nhselhkjpnx74/480x480.jpg",
+        "duration": 289,
+        "streamUrl": "https://api.audius.co/v1/tracks/3J4gk28/stream?app_name=SPOTIFY_CLONE",
+        "genre": "House",
+        "category": "Trending",
+        "source": "audius"
+    },
+    {
+        "id": "J5K5O40",
+        "title": "ellipse - are you lonely",
+        "artist": "ellipse (ill-esha)",
+        "img": "https://v.monophonic.digital/content/baeaaaiqsecudfk3p2pagkoixu4ifcp53hfuvfvfi66lkiasngh2mdbss6vyvm/480x480.jpg",
+        "duration": 272,
+        "streamUrl": "https://api.audius.co/v1/tracks/J5K5O40/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Trip-hop, Downtempo",
+        "category": "Trending",
+        "source": "audius"
+    },
+    {
+        "id": "4gBM54a",
+        "title": "Time Will Tell ",
+        "artist": "J Miguel",
+        "img": "https://v.monophonic.digital/content/baeaaaiqsednr6gpbedx7opkksmfghorpqi7ldecjoz6hb5adsqjucqcb6kf4i/480x480.jpg",
+        "duration": 178,
+        "streamUrl": "https://api.audius.co/v1/tracks/4gBM54a/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Pop",
+        "category": "Pop",
+        "source": "audius"
+    },
+    {
+        "id": "yyR1OZE",
+        "title": "Housewife (Chris Bessy Remix)",
+        "artist": "Chris Bessy",
+        "img": "https://audius-discovery-3.altego.net/content/baeaaaiqseawsv6elpg22da4bq6lnoxn27xnf5tyxkunmcfszg6k7xqmhmymwy/480x480.jpg",
+        "duration": 232,
+        "streamUrl": "https://api.audius.co/v1/tracks/yyR1OZE/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Pop",
+        "category": "Pop",
+        "source": "audius"
+    },
+    {
+        "id": "73wZ5KW",
+        "title": "EVIL",
+        "artist": "SYNN BEATS",
+        "img": "https://audius-content-6.figment.io/content/baeaaaiqsecmtvs2f2k55fxfoy2xrqnsykjcu3hz2nramfertm5lfakrz5o7lg/480x480.jpg",
+        "duration": 192,
+        "streamUrl": "https://api.audius.co/v1/tracks/73wZ5KW/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Pop",
+        "category": "Pop",
+        "source": "audius"
+    },
+    {
+        "id": "pRVKwlX",
+        "title": "If You Were Religious Your A Heathen",
+        "artist": "Oscaribarraflorez",
+        "img": "https://audius-content-4.figment.io/content/baeaaaiqsedt2cddd7nosaeonys4y3mun52fxqbnwsv33y7y3mpyzcpiudamfc/480x480.jpg",
+        "duration": 114,
+        "streamUrl": "https://api.audius.co/v1/tracks/pRVKwlX/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Pop",
+        "category": "Pop",
+        "source": "audius"
+    },
+    {
+        "id": "AVNAo60",
+        "title": "FADED  ",
+        "artist": "IAMIK",
+        "img": "https://val003.open-audio-validator.com/content/baeaaaiqsecjg7n5ifiv3cybylx7alfa2j3ltb3nb6z72s5pkpxtwc6ziaeeea/480x480.jpg",
+        "duration": 189,
+        "streamUrl": "https://api.audius.co/v1/tracks/AVNAo60/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Pop",
+        "category": "Pop",
+        "source": "audius"
+    },
+    {
+        "id": "5O26R6M",
+        "title": "chewing gum",
+        "artist": "Larry Styles",
+        "img": "https://validator.soundmaxx.xyz/content/baeaaaiqseawyt4hqa3xgxcuuwie3qz4ycagbg5vjpcmam3spb7wzkzawwkjdw/480x480.jpg",
+        "duration": 158,
+        "streamUrl": "https://api.audius.co/v1/tracks/5O26R6M/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Pop",
+        "category": "Pop",
+        "source": "audius"
+    },
+    {
+        "id": "PbrG2vN",
+        "title": "Vesper",
+        "artist": "MARMA",
+        "img": "https://val017.open-audio-validator.com/content/baeaaaiqseclnoursjo4cpffoftxcad766wys6hidscvvasfqu52bkfys6lhts/480x480.jpg",
+        "duration": 126,
+        "streamUrl": "https://api.audius.co/v1/tracks/PbrG2vN/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Electronic",
+        "category": "Electronic",
+        "source": "audius"
+    },
+    {
+        "id": "Q08Wgov",
+        "title": "BINAP - FOLD ",
+        "artist": "Destinuna",
+        "img": "https://audius-figment-1-validator-18.figment.io/content/baeaaaiqsebf5sggovvlno5jixe2hquup5b6hmeh5rxy6cuy2v6fu3zgeec2sy/480x480.jpg",
+        "duration": 166,
+        "streamUrl": "https://api.audius.co/v1/tracks/Q08Wgov/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Electronic",
+        "category": "Electronic",
+        "source": "audius"
+    },
+    {
+        "id": "Nkp2Z6x",
+        "title": "Beyonce - Yonce (MVMA Trap REMIX)",
+        "artist": "MVMA",
+        "img": "https://v.monophonic.digital/content/baeaaaiqseczkfbte3y76rxkfykandthxb64y5wnvejs4yocpvluove6i467eo/480x480.jpg",
+        "duration": 163,
+        "streamUrl": "https://api.audius.co/v1/tracks/Nkp2Z6x/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Electronic",
+        "category": "Electronic",
+        "source": "audius"
+    },
+    {
+        "id": "g479rv",
+        "title": "n0zero, Mpaca, Long Paper - Hai Mai",
+        "artist": "n0zero",
+        "img": "https://val020.open-audio-validator.com/content/baeaaaiqseart5au3zktbrup7q5fuzu2q4vh74fmxwhic3e2gfkyfyajyqhelg/480x480.jpg",
+        "duration": 178,
+        "streamUrl": "https://api.audius.co/v1/tracks/g479rv/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Hip-Hop/Rap",
+        "category": "Hip-Hop",
+        "source": "audius"
+    },
+    {
+        "id": "GNVplzb",
+        "title": "LOVE NO MORE | Emotional Rap Instrumental 2026",
+        "artist": "I.R.T Beats",
+        "img": "https://val013.open-audio-validator.com/content/baeaaaiqsebvirqlibichtgm3ugxxawn3yfy6xacf2u5vv6ebjpcfrnwkuzxx2/480x480.jpg",
+        "duration": 165,
+        "streamUrl": "https://api.audius.co/v1/tracks/GNVplzb/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Hip-Hop/Rap",
+        "category": "Hip-Hop",
+        "source": "audius"
+    },
+    {
+        "id": "9d09Kjk",
+        "title": "On The Outside (Mastered)",
+        "artist": "Audio Krak",
+        "img": "https://audius-content-6.figment.io/content/baeaaaiqsec5lzssb3jogg2la5chgkt52lhuc7puva4fmbwgoqjflaeipfe4aw/480x480.jpg",
+        "duration": 222,
+        "streamUrl": "https://api.audius.co/v1/tracks/9d09Kjk/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Hip-Hop/Rap",
+        "category": "Hip-Hop",
+        "source": "audius"
+    },
+    {
+        "id": "z8wyzpj",
+        "title": "Any Questions?",
+        "artist": "Aarr Kellz",
+        "img": "https://audius-content-6.figment.io/content/baeaaaiqsedej6chqfjkr7dkmdizvotz5iafq2kmcuz5k4xk3bxygi6bt4445y/480x480.jpg",
+        "duration": 192,
+        "streamUrl": "https://api.audius.co/v1/tracks/z8wyzpj/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Hip-Hop/Rap",
+        "category": "Hip-Hop",
+        "source": "audius"
+    },
+    {
+        "id": "WNq6QP0",
+        "title": "Egotistical Non Binary Neuter",
+        "artist": "Scan-N-Kutt",
+        "img": "https://val012.open-audio-validator.com/content/baeaaaiqsebbw27yn3bammdr3qe263pdxrm2cxutm43v74n4j2s7pwbhfl4nhw/480x480.jpg",
+        "duration": 220,
+        "streamUrl": "https://api.audius.co/v1/tracks/WNq6QP0/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Hip-Hop/Rap",
+        "category": "Hip-Hop",
+        "source": "audius"
+    },
+    {
+        "id": "OxaqVG1",
+        "title": "Baby Scarface (Feat. Joey Badass & Freddie Gibbs)",
+        "artist": "Aarr Kellz",
+        "img": "https://audius.zeogrid.com/content/baeaaaiqsecuoq3cwexlx3ngwlceihxposwezbrbs4ht7veaii5czld6cfwqau/480x480.jpg",
+        "duration": 181,
+        "streamUrl": "https://api.audius.co/v1/tracks/OxaqVG1/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Hip-Hop/Rap",
+        "category": "Hip-Hop",
+        "source": "audius"
+    },
+    {
+        "id": "Oow989l",
+        "title": "Lesson Five II: Breathe ft. Party Boy",
+        "artist": "ChiefDijon",
+        "img": "https://cn1.mainnet.audiusindex.org/content/baeaaaiqsedilwwm42xc4uegqdui2egoq633jun3lzxaqzoncnor7bvdqm525g/480x480.jpg",
+        "duration": 406,
+        "streamUrl": "https://api.audius.co/v1/tracks/Oow989l/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Ambient",
+        "category": "Ambient",
+        "source": "audius"
+    },
+    {
+        "id": "y7gEGJX",
+        "title": "A Journey without A Destination",
+        "artist": "Jijikita",
+        "img": "https://val005.open-audio-validator.com/content/baeaaaiqseddz5j44pshozj2i4plttmvfqddmkaxeb4ykl7n4dtxjgmk7r5pss/480x480.jpg",
+        "duration": 300,
+        "streamUrl": "https://api.audius.co/v1/tracks/y7gEGJX/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Ambient",
+        "category": "Ambient",
+        "source": "audius"
+    },
+    {
+        "id": "PG4xP2X",
+        "title": "Gurdjieff / Hartmann - Reading a Sacred Book",
+        "artist": "Violin Soundscapes",
+        "img": "https://audius-creator-10.theblueprint.xyz/content/baeaaaiqsedk7fey73nfrbhrtja2llmeudvpukbbybw6qv52ooxr6qay2xm2hs/480x480.jpg",
+        "duration": 492,
+        "streamUrl": "https://api.audius.co/v1/tracks/PG4xP2X/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Ambient",
+        "category": "Ambient",
+        "source": "audius"
+    },
+    {
+        "id": "5zAd0Ax",
+        "title": "Rain Desk Tokyo",
+        "artist": "ta2",
+        "img": "https://val008.open-audio-validator.com/content/baeaaaiqsed5k6f7i7v23lnybmndj4uqv6sfxh2xbn5heq4p65lmfh6em22drs/480x480.jpg",
+        "duration": 188,
+        "streamUrl": "https://api.audius.co/v1/tracks/5zAd0Ax/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Ambient",
+        "category": "Ambient",
+        "source": "audius"
+    },
+    {
+        "id": "b9BBvkM",
+        "title": "S O S",
+        "artist": "SIENMOGUAPO",
+        "img": "https://val001.open-audio-validator.com/content/baeaaaiqsecap6g6kzqmvarbt753uzhq4v3nf5ynkyg7jkge7zley63645phpu/480x480.jpg",
+        "duration": 95,
+        "streamUrl": "https://api.audius.co/v1/tracks/b9BBvkM/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Ambient",
+        "category": "Ambient",
+        "source": "audius"
+    },
+    {
+        "id": "1dMz5X3",
+        "title": "hypothermia",
+        "artist": "dughtyyyy",
+        "img": "https://audius-creator-13.theblueprint.xyz/content/baeaaaiqsecjalkn66qvpmdqslar5b5ppzsgq42c5hswn6h5lrypet3fckqnma/480x480.jpg",
+        "duration": 127,
+        "streamUrl": "https://api.audius.co/v1/tracks/1dMz5X3/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Ambient",
+        "category": "Ambient",
+        "source": "audius"
+    },
+    {
+        "id": "ANM13",
+        "title": "Bombay Tu Hi Re x ATTLAS (Bollywood Mashup)",
+        "artist": "PARTYPREET",
+        "img": "https://val006.open-audio-validator.com/content/QmR3ztcYSe6n28tMZwwxugawVLcpWHyMmqzzvBr7dTirMm/480x480.jpg",
+        "duration": 150,
+        "streamUrl": "https://api.audius.co/v1/tracks/ANM13/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Electronic",
+        "category": "Bollywood",
+        "source": "audius"
+    },
+    {
+        "id": "laPYZ",
+        "title": "Bollywood Action India",
+        "artist": "Composer Squad",
+        "img": "https://audius-creator-1.theblueprint.xyz/content/QmbfyyJmbaK6BFwBpnocPiW2kqmNj65qEYAmBjm4gEce5E/480x480.jpg",
+        "duration": 120,
+        "streamUrl": "https://api.audius.co/v1/tracks/laPYZ/stream?app_name=SPOTIFY_CLONE",
+        "genre": "World",
+        "category": "Bollywood",
+        "source": "audius"
+    },
+    {
+        "id": "ngEwp",
+        "title": "10 Bollywood",
+        "artist": "HasenChat Music",
+        "img": "https://v.monophonic.digital/content/QmY4gHwXvCmk78V5R7co4VbkUGqso4cto4QQkoNmgaoSJj/480x480.jpg",
+        "duration": 276,
+        "streamUrl": "https://api.audius.co/v1/tracks/ngEwp/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Hip-Hop/Rap",
+        "category": "Bollywood",
+        "source": "audius"
+    },
+    {
+        "id": "OvoBQ",
+        "title": "Hona tha Pyaar | Atif Aslam Cover Song | Bollywood |Indian Music",
+        "artist": "Daksh Kalra",
+        "img": "https://audius-creator-1.theblueprint.xyz/content/QmQDX9mfK7ZREY7V94VHJmLiYYfBJmTNxTNpA2dcuiJt1K/480x480.jpg",
+        "duration": 60,
+        "streamUrl": "https://api.audius.co/v1/tracks/OvoBQ/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Ambient",
+        "category": "Bollywood",
+        "source": "audius"
+    },
+    {
+        "id": "Bql4x",
+        "title": "Deewani Mastani Trap Remix (Bollywood Beat)",
+        "artist": "gh0st",
+        "img": "https://audius-creator-8.theblueprint.xyz/content/QmY3AKrk41fTJ4AoBuMm2o8MA6cHDBXUgEXbpMzXmqri5Q/480x480.jpg",
+        "duration": 104,
+        "streamUrl": "https://api.audius.co/v1/tracks/Bql4x/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Ambient",
+        "category": "Bollywood",
+        "source": "audius"
+    },
+    {
+        "id": "0Er74",
+        "title": "Bollywood Bop",
+        "artist": "LionFish",
+        "img": "https://audius-creator-1.theblueprint.xyz/content/Qmd5BfMmsdHaxRxwPibW77CdGbqXtXKQEfDGsntpY9rydh/480x480.jpg",
+        "duration": 182,
+        "streamUrl": "https://api.audius.co/v1/tracks/0Er74/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Soundtrack",
+        "category": "Bollywood",
+        "source": "audius"
+    },
+    {
+        "id": "bdK4W",
+        "title": "Mashup Punjabi Vs Hindi",
+        "artist": "YKK",
+        "img": "https://v.monophonic.digital/content/QmUSkUYvDrZHKgmWBW4bGotNf37EuGkT95oJbZY5k5AF1E/480x480.jpg",
+        "duration": 230,
+        "streamUrl": "https://api.audius.co/v1/tracks/bdK4W/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Soundtrack",
+        "category": "Punjabi",
+        "source": "audius"
+    },
+    {
+        "id": "RNYgX",
+        "title": "Bring ya Booty vs The Real Punjabi (Paul Lee VIP MIX)",
+        "artist": "Paul Lee",
+        "img": "https://v.monophonic.digital/content/QmVYprFow1UBKsCY6GgyLdbs8otkiPaxqF3PwFT48zvLZz/480x480.jpg",
+        "duration": 177,
+        "streamUrl": "https://api.audius.co/v1/tracks/RNYgX/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Moombahton",
+        "category": "Punjabi",
+        "source": "audius"
+    },
+    {
+        "id": "3KRM8",
+        "title": "Yasir Hussain Parmish Verma Latest Punjabi Songs New Punjabi Songs (mp3cut.net)",
+        "artist": "YKK",
+        "img": "https://audius-content-1.figment.io/content/QmUESMfW9i2NVmXm5dsVNtw2F5X2ejM4Bp8VCthyMU7Hse/480x480.jpg",
+        "duration": 195,
+        "streamUrl": "https://api.audius.co/v1/tracks/3KRM8/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Hip-Hop/Rap",
+        "category": "Punjabi",
+        "source": "audius"
+    },
+    {
+        "id": "NkE5KjQ",
+        "title": "Anparh Banda - Pal Punjabi, Amandeep",
+        "artist": "Mita Gillan Wala",
+        "img": "https://audius-figment-1-validator-18.figment.io/content/baeaaaiqsebdae5f7k6lweqlqgwlnxxkfebs5vskv2atlvlvaxdw6f3muyszbo/480x480.jpg",
+        "duration": 290,
+        "streamUrl": "https://api.audius.co/v1/tracks/NkE5KjQ/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Pop",
+        "category": "Punjabi",
+        "source": "audius"
+    },
+    {
+        "id": "ngBQk",
+        "title": "Punjabi MC - Beware Of The Boys [BERGE Remix]",
+        "artist": "BERGE",
+        "img": "https://audius-creator-14.theblueprint.xyz/content/QmXYZrbaU6JLFKspDZtKLg3CVL7pmH6QqSRjGd2BZRVAQu/480x480.jpg",
+        "duration": 125,
+        "streamUrl": "https://api.audius.co/v1/tracks/ngBQk/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Jersey Club",
+        "category": "Punjabi",
+        "source": "audius"
+    },
+    {
+        "id": "qPdGo",
+        "title": "Srivalli -Punjabi Version- Pushpa Allu ",
+        "artist": "YKK",
+        "img": "https://val006.open-audio-validator.com/content/QmUESMfW9i2NVmXm5dsVNtw2F5X2ejM4Bp8VCthyMU7Hse/480x480.jpg",
+        "duration": 111,
+        "streamUrl": "https://api.audius.co/v1/tracks/qPdGo/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Experimental",
+        "category": "Punjabi",
+        "source": "audius"
+    },
+    {
+        "id": "blQ8b",
+        "title": "Arijit Singh - Tum Hi Ho",
+        "artist": "Yulio",
+        "img": "https://v.monophonic.digital/content/Qme468sKVmV5p5mTTgQQQZpNhkDV2jkuJyx1D61rpW3AQd/480x480.jpg",
+        "duration": 241,
+        "streamUrl": "https://api.audius.co/v1/tracks/blQ8b/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Arijit Singh",
+        "source": "audius"
+    },
+    {
+        "id": "3OVWk",
+        "title": "Shayad | Arijit Singh song Cover | Daksh Kalra | Bollywood Music",
+        "artist": "Daksh Kalra",
+        "img": "https://v.monophonic.digital/content/QmTuUkWsM59R8wnnRGeJhkiRXHRH6kCUacTQa4bwCX3v8V/480x480.jpg",
+        "duration": 176,
+        "streamUrl": "https://api.audius.co/v1/tracks/3OVWk/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Arijit Singh",
+        "source": "audius"
+    },
+    {
+        "id": "aBB7a",
+        "title": "Nashe Si Chadh Gayi - Arijit Singh -",
+        "artist": "DaggyBuoy",
+        "img": "https://audius-content-10.figment.io/content/QmdCnPVkNifbVL6c7zSBLxz7bKti8oyQJug4F6zidNqVPa/480x480.jpg",
+        "duration": 238,
+        "streamUrl": "https://api.audius.co/v1/tracks/aBB7a/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Arijit Singh",
+        "source": "audius"
+    },
+    {
+        "id": "blr1k",
+        "title": "Arijit Singh - Tum Hi Ho - AlipBaTa",
+        "artist": "hadiid surya sanjaya",
+        "img": "https://validator.soundmaxx.xyz/content/QmW3UKmRP2sfnBNJyVUDbRevohLJv7fsFWfjnKkvugbJv3/480x480.jpg",
+        "duration": 241,
+        "streamUrl": "https://api.audius.co/v1/tracks/blr1k/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Arijit Singh",
+        "source": "audius"
+    },
+    {
+        "id": "my89Xyr",
+        "title": "Arijit Singh Special | New Romantic Bollywood Mashup music",
+        "artist": "NFThunk",
+        "img": "https://v.monophonic.digital/content/01JRJ0WKMQ251499CD10J29TF0/480x480.jpg",
+        "duration": 345,
+        "streamUrl": "https://api.audius.co/v1/tracks/my89Xyr/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Arijit Singh",
+        "source": "audius"
+    },
+    {
+        "id": "gzJ05Rp",
+        "title": "Love Vibes Atif Aslam, Arijit Singh, Jubin NautiyaHindi Mashup",
+        "artist": "NFThunk",
+        "img": "https://v.monophonic.digital/content/01JRWJZBAE0N4H643P85CCW309/480x480.jpg",
+        "duration": 1307,
+        "streamUrl": "https://api.audius.co/v1/tracks/gzJ05Rp/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Arijit Singh",
+        "source": "audius"
+    },
+    {
+        "id": "LWVVZ",
+        "title": "Sajda Karu",
+        "artist": "The Saab",
+        "img": "https://val001.open-audio-validator.com/content/QmUVua1BU72j7dmgcpihLaWefX7jY8H7ikQEnVKR2Ra1J2/480x480.jpg",
+        "duration": 310,
+        "streamUrl": "https://api.audius.co/v1/tracks/LWVVZ/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Atif Aslam",
+        "source": "audius"
+    },
+    {
+        "id": "r96NV",
+        "title": "ATIF ASLAM - RONA CHADITA - MEL KARAADE RABBA HINDI MOVIE SONG AND DAI 128k",
+        "artist": "Kuurram",
+        "img": "https://audius-creator-17.theblueprint.xyz/content/QmYedg4eL5ZtYa5ubTJ7USNz8TGsoEbKX2qzR7e8pcTyxA/480x480.jpg",
+        "duration": 353,
+        "streamUrl": "https://api.audius.co/v1/tracks/r96NV/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Atif Aslam",
+        "source": "audius"
+    },
+    {
+        "id": "2j3JkJ0",
+        "title": "Tajdar e Haram - Atif Aslam",
+        "artist": "KamiAli",
+        "img": "https://val007.open-audio-validator.com/content/01J64ZEABV6TZF2J91TJM0G8SM/480x480.jpg",
+        "duration": 616,
+        "streamUrl": "https://api.audius.co/v1/tracks/2j3JkJ0/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Atif Aslam",
+        "source": "audius"
+    },
+    {
+        "id": "X99pa",
+        "title": "Atif Aslam-Dil Diya Gallan",
+        "artist": "SILLY INDIVIDUAL",
+        "img": "https://cn1.mainnet.audiusindex.org/content/QmZHbv3x5pSDCh5QMo2PHEYYCDMvpid5mGDZV1Cu8hVHQJ/480x480.jpg",
+        "duration": 134,
+        "streamUrl": "https://api.audius.co/v1/tracks/X99pa/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Atif Aslam",
+        "source": "audius"
+    },
+    {
+        "id": "r9QXg",
+        "title": "Rabba Mehar Kari Darshan Raval Youngveer Aditya D Tru Makers Indie Music",
+        "artist": "Albert20",
+        "img": "https://audius-creator-9.theblueprint.xyz/content/QmVC5iR1RnSaQUtzUZHt9cXFJienLnmXveAZtaMwLEm6sx/480x480.jpg",
+        "duration": 315,
+        "streamUrl": "https://api.audius.co/v1/tracks/r9QXg/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Darshan Raval",
+        "source": "audius"
+    },
+    {
+        "id": "WggZv",
+        "title": "Darshan Raval-Asal Mein",
+        "artist": "SILLY INDIVIDUAL",
+        "img": "https://audius-creator-6.theblueprint.xyz/content/QmRixfQa3XwANq8o5gi4D6M1C5J9VMQz3AVhufywQ72XzL/480x480.jpg",
+        "duration": 178,
+        "streamUrl": "https://api.audius.co/v1/tracks/WggZv/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Darshan Raval",
+        "source": "audius"
+    },
+    {
+        "id": "BxY9P",
+        "title": "Ishq Chadha Hai Darshan Raval artist440",
+        "artist": "Saifkahan",
+        "img": "https://audius-creator-1.theblueprint.xyz/content/QmfETAzWZUjT6cQjwHYuR76cNEfoarmJcrX5XtU1FdZMCj/480x480.jpg",
+        "duration": 179,
+        "streamUrl": "https://api.audius.co/v1/tracks/BxY9P/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Darshan Raval",
+        "source": "audius"
+    },
+    {
+        "id": "RRjoQ",
+        "title": "Is Qadar Tumse Humein Pyar Ho Gaya | College Life Love Story | Darshan Raval | New Song | is qadar",
+        "artist": "Sohidul",
+        "img": "https://audius-creator-8.theblueprint.xyz/content/QmNNXNxGxkLW758Pi4xv8fkdSFLeWj1TS6DG9QVnUaL4T3/480x480.jpg",
+        "duration": 188,
+        "streamUrl": "https://api.audius.co/v1/tracks/RRjoQ/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Darshan Raval",
+        "source": "audius"
+    },
+    {
+        "id": "NP86mYp",
+        "title": "Aa Jaana - Darshan Raval",
+        "artist": "No Matters",
+        "img": "https://audius-creator-6.theblueprint.xyz/content/QmcfRmqL6yHz2quH13VigzQBBbXQAv8RfnF55ggao8uLvw/480x480.jpg",
+        "duration": 205,
+        "streamUrl": "https://api.audius.co/v1/tracks/NP86mYp/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Darshan Raval",
+        "source": "audius"
+    },
+    {
+        "id": "WV51B",
+        "title": "Love Is Pain Mashup | Emotion Chillout Mix | Arijit Singh ,Darshan Raval | BICKYOFFICIAL",
+        "artist": "Sasinx",
+        "img": "https://v.monophonic.digital/content/QmU5qNGZSiq7zhZUcgZKmviYhi3TUA7fodixx19eqCzMPN/480x480.jpg",
+        "duration": 282,
+        "streamUrl": "https://api.audius.co/v1/tracks/WV51B/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Darshan Raval",
+        "source": "audius"
+    },
+    {
+        "id": "G0GPj",
+        "title": "Diljit Dosanjh - CLASH Music Video G.O.A.T.",
+        "artist": "The high Ground",
+        "img": "https://audius-02.staked.cloud/content/QmTGxyYHYCsfpTBuVVnguyDKGawVcT1orCLTtgAKWgpCXv/480x480.jpg",
+        "duration": 175,
+        "streamUrl": "https://api.audius.co/v1/tracks/G0GPj/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Diljit Dosanjh",
+        "source": "audius"
+    },
+    {
+        "id": "r7bqV",
+        "title": "Diljit Dosanjh ft. Honey Singh - Panga",
+        "artist": "EVO",
+        "img": "https://v.monophonic.digital/content/QmVYENGW44ZhpRsBrb7Xz6gCsk9fbs6XqCQFQWHxpXquia/480x480.jpg",
+        "duration": 210,
+        "streamUrl": "https://api.audius.co/v1/tracks/r7bqV/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Diljit Dosanjh",
+        "source": "audius"
+    },
+    {
+        "id": "vl7KK",
+        "title": "Born To Shine - Diljit Dosanjh",
+        "artist": "❤️DILLSEDESI❤️",
+        "img": "https://v.monophonic.digital/content/QmTERQk81JLQyeVfUM3h6j6MpYAtC4c1EMwBVusxzf2s9h/480x480.jpg",
+        "duration": 213,
+        "streamUrl": "https://api.audius.co/v1/tracks/vl7KK/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Diljit Dosanjh",
+        "source": "audius"
+    },
+    {
+        "id": "WQoVk",
+        "title": "Happy Birthday - Diljit Dosanjh",
+        "artist": "Bal mukund",
+        "img": "https://audius-content-3.figment.io/content/QmcWjwkJpPYJndUyvQvox2idhybvsSCA9zwUQ9nkFne6aL/480x480.jpg",
+        "duration": 162,
+        "streamUrl": "https://api.audius.co/v1/tracks/WQoVk/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Diljit Dosanjh",
+        "source": "audius"
+    },
+    {
+        "id": "zN8Wx",
+        "title": "Peed - Diljit Dosanjh",
+        "artist": "❤️DILLSEDESI❤️",
+        "img": "https://audius-creator-9.theblueprint.xyz/content/QmTERQk81JLQyeVfUM3h6j6MpYAtC4c1EMwBVusxzf2s9h/480x480.jpg",
+        "duration": 264,
+        "streamUrl": "https://api.audius.co/v1/tracks/zN8Wx/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Diljit Dosanjh",
+        "source": "audius"
+    },
+    {
+        "id": "lJJzz1b",
+        "title": "Do You Know Diljit Dosanjh",
+        "artist": "Naughty Demon😂",
+        "img": "https://v.monophonic.digital/content/QmVskQCXgEW3ySdHELAQ9cUQBgRcgPYKumSLPcfSGbUigF/480x480.jpg",
+        "duration": 244,
+        "streamUrl": "https://api.audius.co/v1/tracks/lJJzz1b/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Diljit Dosanjh",
+        "source": "audius"
+    },
+    {
+        "id": "Kd9wy",
+        "title": "Excuses - Ap Dhillon",
+        "artist": "Sahil",
+        "img": "https://audius-content-3.figment.io/content/QmSuJ1RFuLGgNjsfvHDJ7o1v3FquHWqbb6nbbwrisJmjtY/480x480.jpg",
+        "duration": 176,
+        "streamUrl": "https://api.audius.co/v1/tracks/Kd9wy/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "AP Dhillon",
+        "source": "audius"
+    },
+    {
+        "id": "QK7B1",
+        "title": "AP DHILLON - MA BELLE",
+        "artist": "DJ VK",
+        "img": "https://audius-discovery-3.altego.net/content/QmfN8N86fozfsuRVJ4yDt7KK6q2xh4CVLdU2cWrC9GW5je/480x480.jpg",
+        "duration": 156,
+        "streamUrl": "https://api.audius.co/v1/tracks/QK7B1/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "AP Dhillon",
+        "source": "audius"
+    },
+    {
+        "id": "7XBmzg",
+        "title": "Uddu Uddu Chit Karda - Razia Dhillon",
+        "artist": "Mita Gillan Wala",
+        "img": "https://validator.soundmaxx.xyz/content/baeaaaiqsebppzbm47idj4odt2dbmiavyjkk6u65h6lttxirpq5xfi7rlamwey/480x480.jpg",
+        "duration": 187,
+        "streamUrl": "https://api.audius.co/v1/tracks/7XBmzg/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "AP Dhillon",
+        "source": "audius"
+    },
+    {
+        "id": "QRlq9",
+        "title": "insaneringtonebyapdhillon1610888921-56372",
+        "artist": "cobalt2424",
+        "img": "https://val005.open-audio-validator.com/content/QmV9XX6CVrmFrzkoVgPCsuwvvEdCxYpzvGJPHfF8WpnZS3/480x480.jpg",
+        "duration": 39,
+        "streamUrl": "https://api.audius.co/v1/tracks/QRlq9/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "AP Dhillon",
+        "source": "audius"
+    },
+    {
+        "id": "Gg3wj",
+        "title": "Dilpreet Dhillon Gaddi Vich",
+        "artist": "YKK",
+        "img": "https://val006.open-audio-validator.com/content/QmUESMfW9i2NVmXm5dsVNtw2F5X2ejM4Bp8VCthyMU7Hse/480x480.jpg",
+        "duration": 172,
+        "streamUrl": "https://api.audius.co/v1/tracks/Gg3wj/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "AP Dhillon",
+        "source": "audius"
+    },
+    {
+        "id": "PGdmgzJ",
+        "title": "Dilon Day",
+        "artist": "Chill EX Music",
+        "img": "https://cn0.mainnet.audiusindex.org/content/01JXNVMASF1ZN4GFNYWEPF8CEM/480x480.jpg",
+        "duration": 169,
+        "streamUrl": "https://api.audius.co/v1/tracks/PGdmgzJ/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "AP Dhillon",
+        "source": "audius"
+    },
+    {
+        "id": "WQ1rZ",
+        "title": "Marshmello x Pritam - BIBA feat. Shirley Setia & Shah Rukh Khan",
+        "artist": "marshmello",
+        "img": "https://val011.open-audio-validator.com/content/QmSwbpyyGabprHf6mm42nfXHwvQe4MnPTPtTGX2FEUCLHq/480x480.jpg",
+        "duration": 218,
+        "streamUrl": "https://api.audius.co/v1/tracks/WQ1rZ/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Pritam",
+        "source": "audius"
+    },
+    {
+        "id": "kl8ZgWw",
+        "title": "Tere Hawaale | Laal Singh Chaddha Aamir,Kareena Arijit,Shilpa Pritam,Amitabh,Advait",
+        "artist": "Mxz.06z",
+        "img": "https://val019.open-audio-validator.com/content/Qmc45nDLknqXtmbwmdKXbx4PvPjd7TqtDKDS8HdwXePYUZ/480x480.jpg",
+        "duration": 331,
+        "streamUrl": "https://api.audius.co/v1/tracks/kl8ZgWw/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Pritam",
+        "source": "audius"
+    },
+    {
+        "id": "ByPWA",
+        "title": "Kabira Full Song Yeh Jawaani Hai Deewani Pritam Ranbir Kapoor Deepika Padukone",
+        "artist": "Shantosh chakma",
+        "img": "https://v.monophonic.digital/content/Qma6RARcYy78RwDhJxwFCWTekfQdoz5NLhexyB6YEWBaRQ/480x480.jpg",
+        "duration": 251,
+        "streamUrl": "https://api.audius.co/v1/tracks/ByPWA/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Pritam",
+        "source": "audius"
+    },
+    {
+        "id": "xPPm2",
+        "title": "Subhanallah Full Video Song Yeh Jawaani Hai Deewani Pritam Ranbir Kapoor Deepika Padukone",
+        "artist": "Paritosh Chakma 🎏",
+        "img": "https://v.monophonic.digital/content/QmZ61CcePBz9eu2qv9K713pLV2scLLTeKbseSnuQ7WT34L/480x480.jpg",
+        "duration": 206,
+        "streamUrl": "https://api.audius.co/v1/tracks/xPPm2/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Pritam",
+        "source": "audius"
+    },
+    {
+        "id": "wVNo5",
+        "title": "Crazy Kiya Re Full Song Dhoom 2 Aishwarya Rai Hrithik Roshan Sunidhi Chauhan Pritam Sameer",
+        "artist": "louis anderson",
+        "img": "https://audius-content-10.figment.io/content/QmRGafsE1nvNnGNL18LLD7cny47XJxMpQdLkuVZQdbBKE3/480x480.jpg",
+        "duration": 304,
+        "streamUrl": "https://api.audius.co/v1/tracks/wVNo5/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Pritam",
+        "source": "audius"
+    },
+    {
+        "id": "VPVj6",
+        "title": "Organizam - Algoritam",
+        "artist": "Glitch Records",
+        "img": "https://audius-05.staked.cloud/content/QmXUQETkogUQ3heE27D5X7WuwCwGAA2K2VyjCY8LRdpCYZ/480x480.jpg",
+        "duration": 89,
+        "streamUrl": "https://api.audius.co/v1/tracks/VPVj6/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Pritam",
+        "source": "audius"
+    },
+    {
+        "id": "3vJW9EE",
+        "title": "Mere Haath Mein-Sonu Nigam",
+        "artist": "Abdhak",
+        "img": "https://v.monophonic.digital/content/QmZnz4N3GUZKqwUgosLRAuC7KGAErvNa5d5jC7fjwZmYXx/480x480.jpg",
+        "duration": 288,
+        "streamUrl": "https://api.audius.co/v1/tracks/3vJW9EE/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Sonu Nigam",
+        "source": "audius"
+    },
+    {
+        "id": "NYRK1Ox",
+        "title": "Tera Dilbar Tera Saathi Yeh Dil Tusshar Kapoor, Anita Alka Yagnik, Sonu Nigam Hindi Love Song",
+        "artist": "So lucky",
+        "img": "https://val018.open-audio-validator.com/content/01K6JGQEFHJZFYE609K9WH9WVP/480x480.jpg",
+        "duration": 318,
+        "streamUrl": "https://api.audius.co/v1/tracks/NYRK1Ox/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Sonu Nigam",
+        "source": "audius"
+    },
+    {
+        "id": "V086o5W",
+        "title": "Christmas 1999",
+        "artist": "kuzukigami",
+        "img": "https://audius-creator-2.theblueprint.xyz/content/01HA2MJ6QMJTBVTXBHPMB68WQX/480x480.jpg",
+        "duration": 92,
+        "streamUrl": "https://api.audius.co/v1/tracks/V086o5W/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Sonu Nigam",
+        "source": "audius"
+    },
+    {
+        "id": "EWw1R",
+        "title": "Shukhran Allah by Sonu Nigam Cover",
+        "artist": "Nikhil",
+        "img": "https://audius-creator-3.theblueprint.xyz/content/QmWcrhEBgEhqXvd81TX1exF2ReP7tkiYoehJahkmN1GnR3/480x480.jpg",
+        "duration": 159,
+        "streamUrl": "https://api.audius.co/v1/tracks/EWw1R/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Sonu Nigam",
+        "source": "audius"
+    },
+    {
+        "id": "0vOzj",
+        "title": "Diljaniya LO-FI Sonu Nigam Rohan Rohan",
+        "artist": "Rohan Rohan",
+        "img": "https://val019.open-audio-validator.com/content/QmQ7EGBkrcvCE8hhVdr5HYwwnRuQCTwL1iqMQ7tizLeb6Q/480x480.jpg",
+        "duration": 243,
+        "streamUrl": "https://api.audius.co/v1/tracks/0vOzj/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Sonu Nigam",
+        "source": "audius"
+    },
+    {
+        "id": "qbqOM",
+        "title": "LYRICAL Main Agar Kahoon Om Shanti Om Shahrukh Khan%2CDeepika Padukone Sonu Nigam%2CShreya Ghosal",
+        "artist": ".Mohsin Raza",
+        "img": "https://audius-creator-4.theblueprint.xyz/content/QmcwCUCW96MfTSiNseRGT5SccPgaLx7zkzCsJeBzHd4m17/480x480.jpg",
+        "duration": 328,
+        "streamUrl": "https://api.audius.co/v1/tracks/qbqOM/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Sonu Nigam",
+        "source": "audius"
+    },
+    {
+        "id": "8MBPp",
+        "title": "Tu Thodi Der Aur Thehar Ja Female Version Ringtone by Shreya Ghoshal - AndroidMobilesZone",
+        "artist": "Neer",
+        "img": "https://audius-creator-7.theblueprint.xyz/content/QmNjjtuD98m8L3nNVjRJ72gfSdzub2FSXqHGeKJFBzMFi6/480x480.jpg",
+        "duration": 30,
+        "streamUrl": "https://api.audius.co/v1/tracks/8MBPp/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Shreya Ghoshal",
+        "source": "audius"
+    },
+    {
+        "id": "zzQ2w",
+        "title": "Tu Thodi Der Aur Thehar Ja Female Version Ringtone by Shreya Ghoshal - AndroidMobilesZone",
+        "artist": "Neer",
+        "img": "https://audius-creator-2.theblueprint.xyz/content/QmSSdgkXG45LfErKDbEThrHTwKBGLCbCyKPaBEN4ZoPvgn/480x480.jpg",
+        "duration": 30,
+        "streamUrl": "https://api.audius.co/v1/tracks/zzQ2w/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Shreya Ghoshal",
+        "source": "audius"
+    },
+    {
+        "id": "lwk5N",
+        "title": "03. Panga - Mika Singh & Shreya Ghoshal-",
+        "artist": "Tomi123",
+        "img": "https://v.monophonic.digital/content/Qmcjd8i1J7vYxZpnDcsGbRNUdDqqVQK5fjUWfgKdqAiqur/480x480.jpg",
+        "duration": 197,
+        "streamUrl": "https://api.audius.co/v1/tracks/lwk5N/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Shreya Ghoshal",
+        "source": "audius"
+    },
+    {
+        "id": "q4Q7o",
+        "title": "Pal %5BSlowed And Reverb%5D - Arijit Singh Shreya Ghoshal Lofi Audio Song 10 PM LOFi",
+        "artist": "Usman1",
+        "img": "https://val002.open-audio-validator.com/content/QmSKYJYdSMcWnED2MvsypJkpnjcs7NT3tNXWDcTpWwCVPi/480x480.jpg",
+        "duration": 274,
+        "streamUrl": "https://api.audius.co/v1/tracks/q4Q7o/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Shreya Ghoshal",
+        "source": "audius"
+    },
+    {
+        "id": "220GG",
+        "title": "Pal %5BSlowed And Reverb%5D - Arijit Singh Shreya Ghoshal Lofi Audio Song 10 PM LOFi",
+        "artist": "Muhammad usman",
+        "img": "https://val002.open-audio-validator.com/content/QmSKYJYdSMcWnED2MvsypJkpnjcs7NT3tNXWDcTpWwCVPi/480x480.jpg",
+        "duration": 274,
+        "streamUrl": "https://api.audius.co/v1/tracks/220GG/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Shreya Ghoshal",
+        "source": "audius"
+    },
+    {
+        "id": "j97lV",
+        "title": "Pal %5BSlowed And Reverb%5D - Arijit Singh Shreya Ghoshal Lofi Audio Song 10 PM LOFi",
+        "artist": "Muhammadusman1616",
+        "img": "https://val020.open-audio-validator.com/content/QmYWfnhiAGnZk4FN2PkiTeFFAUH4uJPkiDiRb112oEPmqn/480x480.jpg",
+        "duration": 274,
+        "streamUrl": "https://api.audius.co/v1/tracks/j97lV/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Shreya Ghoshal",
+        "source": "audius"
+    },
+    {
+        "id": "ryy1Y",
+        "title": "Paani Paani - Badshah",
+        "artist": "DaggyBuoy",
+        "img": "https://v.monophonic.digital/content/QmZJdHid9HUMcWczieMKAWQF8awrKyUWJumLni3NwUAQ9T/480x480.jpg",
+        "duration": 174,
+        "streamUrl": "https://api.audius.co/v1/tracks/ryy1Y/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Badshah",
+        "source": "audius"
+    },
+    {
+        "id": "420BE",
+        "title": "Lalamusa | YASIR ft Hassan Badshah",
+        "artist": "YASIR",
+        "img": "https://audius-figment-1-validator-19.figment.io/content/QmPKyW52A9xtbBnLHBE1mZwXWBL2p7GtED7uRqmz99Cuuy/480x480.jpg",
+        "duration": 214,
+        "streamUrl": "https://api.audius.co/v1/tracks/420BE/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Badshah",
+        "source": "audius"
+    },
+    {
+        "id": "xPzlx",
+        "title": "BOLO HAR HAR HAR Video Song SHIVAAY Title Song Ajay Devgn Mithoon Badshah T-Series",
+        "artist": "rohit",
+        "img": "https://val017.open-audio-validator.com/content/QmQgYJEzVbow5aexkMXYovqWxwPQxTAbsZyEWVaoUYPv6Y/480x480.jpg",
+        "duration": 209,
+        "streamUrl": "https://api.audius.co/v1/tracks/xPzlx/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Badshah",
+        "source": "audius"
+    },
+    {
+        "id": "gmWv0Ok",
+        "title": "Tamma Tamma Again - Bappi Lahiri, Anuradha Paudwal, Badshah",
+        "artist": "Sp Shiva",
+        "img": "https://audius-content-10.figment.io/content/01H4Q8Q3DKC07Q7W375JFF8390/480x480.jpg",
+        "duration": 199,
+        "streamUrl": "https://api.audius.co/v1/tracks/gmWv0Ok/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Badshah",
+        "source": "audius"
+    },
+    {
+        "id": "3oZE8",
+        "title": "Slow Slow - Badshah",
+        "artist": "Kalpesh07",
+        "img": "https://audius-discovery-1.altego.net/content/QmQYtFFZf31cgxePmiY6DFBAYBs2cGG8icpo2aN8V2cAMp/480x480.jpg",
+        "duration": 220,
+        "streamUrl": "https://api.audius.co/v1/tracks/3oZE8/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Badshah",
+        "source": "audius"
+    },
+    {
+        "id": "1VjEE",
+        "title": "Abhi Toh Party Shuru Hui Hai FULL VIDEO Song Khoobsurat Badshah Aast",
+        "artist": "Sitaram",
+        "img": "https://audius-content-14.figment.io/content/QmZ2vbdgokXAU6fFUVh7UMJcSovKDd3iVi3r7XKwQdwe88/480x480.jpg",
+        "duration": 189,
+        "streamUrl": "https://api.audius.co/v1/tracks/1VjEE/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Badshah",
+        "source": "audius"
+    },
+    {
+        "id": "OPmEV6g",
+        "title": "Tibbeyan Da Putt - Sidhu Moose Wala",
+        "artist": "Tribute to Sidhu ",
+        "img": "https://v.monophonic.digital/content/01K2X1P40AXKW4225TR77K4GFE/480x480.jpg",
+        "duration": 283,
+        "streamUrl": "https://api.audius.co/v1/tracks/OPmEV6g/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Sidhu Moose Wala",
+        "source": "audius"
+    },
+    {
+        "id": "jZdk4",
+        "title": "295 - Sidhu Moose Wala",
+        "artist": "Punjabi Songs",
+        "img": "https://val016.open-audio-validator.com/content/QmNwnX6RmziQTDTKGNXWGfWe31nNawHuaY6iKzpbFsAgwW/480x480.jpg",
+        "duration": 273,
+        "streamUrl": "https://api.audius.co/v1/tracks/jZdk4/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Sidhu Moose Wala",
+        "source": "audius"
+    },
+    {
+        "id": "yyJj7",
+        "title": "Malwa Block - Sidhu Moose Wala",
+        "artist": "Punjabi Songs",
+        "img": "https://validator.soundmaxx.xyz/content/QmNnjaouh2obLTvaba4jeuW6Vqoh94N69s9ZjoooZbUToa/480x480.jpg",
+        "duration": 239,
+        "streamUrl": "https://api.audius.co/v1/tracks/yyJj7/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Sidhu Moose Wala",
+        "source": "audius"
+    },
+    {
+        "id": "XbxY9qp",
+        "title": "LOCK",
+        "artist": "Tribute to Sidhu ",
+        "img": "https://v.monophonic.digital/content/01JYGM3H50Z955YDD6F3Q15VWV/480x480.jpg",
+        "duration": 181,
+        "streamUrl": "https://api.audius.co/v1/tracks/XbxY9qp/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Sidhu Moose Wala",
+        "source": "audius"
+    },
+    {
+        "id": "B2xMp",
+        "title": "Vaar-Sidhu Moose Wala",
+        "artist": "Tribute to Sidhu ",
+        "img": "https://audius-content-1.figment.io/content/QmQrSDbgBcXpiJRie16okmwmadKUDVvXSQGh6Usz1PW7Nj/480x480.jpg",
+        "duration": 137,
+        "streamUrl": "https://api.audius.co/v1/tracks/B2xMp/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Sidhu Moose Wala",
+        "source": "audius"
+    },
+    {
+        "id": "R66MQ",
+        "title": "SYL -SIDHU MOOSE WALA",
+        "artist": "Tribute to Sidhu ",
+        "img": "https://audius-creator-16.theblueprint.xyz/content/QmS3k8zjeCJ6qDQrwMCdZ8pSVaWYhnpKKPBgM6eyLARomv/480x480.jpg",
+        "duration": 249,
+        "streamUrl": "https://api.audius.co/v1/tracks/R66MQ/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Sidhu Moose Wala",
+        "source": "audius"
+    },
+    {
+        "id": "O795R",
+        "title": "Anish Kumar & Barry Can’t Swim - Blackpool Boulevard",
+        "artist": "Anish Kumar",
+        "img": "https://v.monophonic.digital/content/QmNaq93WQzt7vN2eZhBVguP4kGMf35C6KzRBS8iV82jJwW/480x480.jpg",
+        "duration": 355,
+        "streamUrl": "https://api.audius.co/v1/tracks/O795R/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Tum Hi Ho",
+        "source": "audius"
+    },
+    {
+        "id": "LjKGo",
+        "title": "Tum Hi Ho",
+        "artist": "Arv",
+        "img": "https://v.monophonic.digital/content/QmT15BH9P5WTDmdAhjkpoUK5mQH2bFQumXYaX7BsSXxkoz/480x480.jpg",
+        "duration": 262,
+        "streamUrl": "https://api.audius.co/v1/tracks/LjKGo/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Tum Hi Ho",
+        "source": "audius"
+    },
+    {
+        "id": "jarWj",
+        "title": "Tum Hi Ho Aashiqui 2 Instrumental Sandeep Thakur, Studio Unplugg",
+        "artist": "sofikul",
+        "img": "https://val020.open-audio-validator.com/content/QmS72fnXbQVJQTPnh9VmiUJiS2VkUQRGRXrdLSUSNUog9J/480x480.jpg",
+        "duration": 284,
+        "streamUrl": "https://api.audius.co/v1/tracks/jarWj/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Tum Hi Ho",
+        "source": "audius"
+    },
+    {
+        "id": "z6yox",
+        "title": "Tum Hi Ho Aashiqui 2 Instrumental Sandeep Thakur, Studio Unplugg",
+        "artist": "Sofikulk091",
+        "img": "https://audius-creator-1.theblueprint.xyz/content/QmS8sAkPPXiwkT8sUS6Qhuq1GxA4TpVuKmpkMrM1KHZpLH/480x480.jpg",
+        "duration": 284,
+        "streamUrl": "https://api.audius.co/v1/tracks/z6yox/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Tum Hi Ho",
+        "source": "audius"
+    },
+    {
+        "id": "NvXwOB4",
+        "title": "Kesariya",
+        "artist": "Navaneeth",
+        "img": "https://val019.open-audio-validator.com/content/QmRX2X7zKeUDcpcoiv9kNT5c93tHciT94J3ZgYte9xoFqt/480x480.jpg",
+        "duration": 283,
+        "streamUrl": "https://api.audius.co/v1/tracks/NvXwOB4/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Kesariya",
+        "source": "audius"
+    },
+    {
+        "id": "YVxgJ",
+        "title": "Godiya Me Sutala Ae Jaan 6 Mahina Ke Laika Niyan",
+        "artist": "Naina99",
+        "img": "https://audius-creator-11.theblueprint.xyz/content/QmZtyviy6VXRbwyjuXuY5zpV1fruo5wdxfrMzEp6CZATXm/480x480.jpg",
+        "duration": 226,
+        "streamUrl": "https://api.audius.co/v1/tracks/YVxgJ/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Kesariya",
+        "source": "audius"
+    },
+    {
+        "id": "ZRVm7",
+        "title": "Godiya Me Sutala Ae Jaan 6 Mahina Ke Laika Niyan",
+        "artist": "Khushi14",
+        "img": "https://audius-creator-11.theblueprint.xyz/content/QmZtyviy6VXRbwyjuXuY5zpV1fruo5wdxfrMzEp6CZATXm/480x480.jpg",
+        "duration": 226,
+        "streamUrl": "https://api.audius.co/v1/tracks/ZRVm7/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Kesariya",
+        "source": "audius"
+    },
+    {
+        "id": "ZO0yNA6",
+        "title": "Kesariya X Saibo Mashup LinaLofi SlowReverb Special Mashup",
+        "artist": "Irshad vayad",
+        "img": "https://audius-discovery-2.altego.net/content/QmQSyd224EcbHrE4vGM1S78Xm4CbUPJSBXfrRpkNLFYYjQ/480x480.jpg",
+        "duration": 437,
+        "streamUrl": "https://api.audius.co/v1/tracks/ZO0yNA6/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Kesariya",
+        "source": "audius"
+    },
+    {
+        "id": "2MJazr6",
+        "title": "kesariya kabira mastered",
+        "artist": "Ithihas",
+        "img": "https://audius-content-10.figment.io/content/QmRFopydmSR8ruG96bQJLjoRPSiVbLsArpWKe6EFv2sV3X/480x480.jpg",
+        "duration": 63,
+        "streamUrl": "https://api.audius.co/v1/tracks/2MJazr6/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Kesariya",
+        "source": "audius"
+    },
+    {
+        "id": "NRWmY",
+        "title": "Godiya Me Sutala Ae Jaan 6 Mahina Ke Laika Niyan",
+        "artist": "Shubham",
+        "img": "https://v.audius.rickyrombo.com/content/QmZtyviy6VXRbwyjuXuY5zpV1fruo5wdxfrMzEp6CZATXm/480x480.jpg",
+        "duration": 226,
+        "streamUrl": "https://api.audius.co/v1/tracks/NRWmY/stream?app_name=SPOTIFY_CLONE",
+        "genre": "Bollywood / Indian Pop",
+        "category": "Bollywood",
+        "searchTag": "Kesariya",
+        "source": "audius"
     }
 ];
 
@@ -1575,12 +3143,17 @@ function initMusicModule(options = {}) {
 
     let activeAnalyser = options.getAnalyser ? options.getAnalyser() : null;
     let currentPalette = trackColorPalettes[1];
-    let isCurrentlyPlaying = false;
+    let isCurrentlyPlaying = typeof options.getIsPlaying === "function" ? options.getIsPlaying() : false;
+    let currentTrackMeta = options.getCurrentTrack ? options.getCurrentTrack() : null;
+    let audioCurrentTime = 0;
 
     // Visualizer state
     let visualizerMode = "bars"; // 'bars' | 'wave' | 'radial'
     let animFrameId = null;
-    const peakHoldBars = new Float32Array(64);
+    const barCount = 48;
+    const currentBarValues = new Float32Array(barCount);
+    const peakHoldBars = new Float32Array(barCount);
+    const peakHoldTimers = new Float32Array(barCount);
     let idlePhase = 0;
 
     const canvas = $("audioVisualizerCanvas");
@@ -1596,7 +3169,8 @@ function initMusicModule(options = {}) {
             if (toggleIcon) {
                 toggleIcon.className = isExpanded ? "fa-solid fa-compress" : "fa-solid fa-expand";
             }
-            resizeCanvas();
+            setTimeout(resizeCanvas, 40);
+            setTimeout(resizeCanvas, 360);
         });
     }
 
@@ -1610,15 +3184,22 @@ function initMusicModule(options = {}) {
 
     function resizeCanvas() {
         if (!canvas) return;
-        const rect = canvas.getBoundingClientRect();
+        const parent = canvasWrapper || canvas.parentElement;
+        const w = (parent ? parent.clientWidth : 0) || canvas.clientWidth || 800;
+        const h = (parent ? parent.clientHeight : 0) || (canvasWrapper && canvasWrapper.classList.contains("expanded") ? 240 : 130);
+        if (w <= 0 || h <= 0) return;
         const dpr = window.devicePixelRatio || 1;
-        canvas.width = Math.floor(rect.width * dpr);
-        canvas.height = Math.floor(rect.height * dpr);
-        if (ctx) ctx.scale(dpr, dpr);
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        if (ctx) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(dpr, dpr);
+        }
     }
 
     window.addEventListener("resize", resizeCanvas);
     setTimeout(resizeCanvas, 100);
+    setTimeout(resizeCanvas, 400);
 
     // Dynamic Album Color Theme application
     function applyDynamicTheme(track) {
@@ -1664,28 +3245,114 @@ function initMusicModule(options = {}) {
             if (!pageMusic || pageMusic.style.display === "none") return; // Don't compute when page is hidden
 
             const dpr = window.devicePixelRatio || 1;
-            const w = canvas.width / dpr;
-            const h = canvas.height / dpr;
+            let w = canvas.width / dpr;
+            let h = canvas.height / dpr;
+
+            if (w <= 0 || h <= 0) {
+                resizeCanvas();
+                w = canvas.width / dpr;
+                h = canvas.height / dpr;
+                if (w <= 0 || h <= 0) return;
+            }
 
             ctx.clearRect(0, 0, w, h);
 
-            let hasAudio = false;
+            let hasRealAudio = false;
             if (activeAnalyser && isCurrentlyPlaying) {
-                activeAnalyser.getByteFrequencyData(freqBuffer);
-                activeAnalyser.getByteTimeDomainData(timeBuffer);
-                for (let i = 0; i < 32; i++) {
-                    if (freqBuffer[i] > 10) { hasAudio = true; break; }
+                try {
+                    activeAnalyser.getByteFrequencyData(freqBuffer);
+                    activeAnalyser.getByteTimeDomainData(timeBuffer);
+                    for (let i = 0; i < 32; i++) {
+                        if (freqBuffer[i] > 10) { hasRealAudio = true; break; }
+                    }
+                } catch (e) {
+                    hasRealAudio = false;
                 }
             }
 
-            idlePhase += 0.04;
+            // Sync playback state & current audio time
+            if (typeof options.getIsPlaying === "function") {
+                isCurrentlyPlaying = options.getIsPlaying();
+            }
+            const curTime = (typeof options.getAudioTime === "function" ? options.getAudioTime() : 0) || audioCurrentTime || (idlePhase * 0.4);
+            const volume = (typeof options.getAudioVolume === "function" ? options.getAudioVolume() : 1);
+            const track = (options.getCurrentTrack ? options.getCurrentTrack() : null) || currentTrackMeta;
+
+            let effectiveBpm = 118;
+            if (track) {
+                if (track.bpm) {
+                    const parsed = parseInt(track.bpm, 10);
+                    if (!isNaN(parsed) && parsed > 50 && parsed < 220) effectiveBpm = parsed;
+                } else if (track.tempo && !isNaN(track.tempo)) {
+                    effectiveBpm = track.tempo;
+                }
+            }
+
+            // High-fidelity dynamic spectrum synthesis when streaming external CORS-restricted songs
+            if (!hasRealAudio && isCurrentlyPlaying && volume > 0) {
+                const beatSec = 60 / effectiveBpm;
+                const beatProgress = (curTime / beatSec) % 1.0;
+                const kickPunch = Math.pow(Math.max(0, 1.0 - beatProgress * 2.2), 2.8);
+                const snarePhase = ((curTime / beatSec) + 1.0) % 2.0;
+                const snareCrack = Math.pow(Math.max(0, 1.0 - (snarePhase % 1.0) * 2.6), 3.0);
+                const hatTick = Math.pow(Math.max(0, Math.sin(curTime * (effectiveBpm / 60) * Math.PI * 2)), 4.0);
+                const sixteenth = Math.sin(curTime * (effectiveBpm / 60) * Math.PI * 4);
+
+                for (let i = 0; i < 64; i++) {
+                    let binEnergy = 0;
+                    const normIdx = i / 64;
+
+                    if (i < 8) {
+                        const bassSweep = Math.sin(curTime * 8 + i * 0.3) * 0.15;
+                        binEnergy = (kickPunch * 0.85 + bassSweep + 0.18) * (1.0 - normIdx * 0.35);
+                    } else if (i < 24) {
+                        const midHarmonic = Math.sin(curTime * 14 + i * 0.45) * 0.22;
+                        const chordWalk = Math.sin(curTime * 3.5 + i * 0.2) * 0.18;
+                        binEnergy = snareCrack * 0.55 + midHarmonic + chordWalk + 0.25;
+                    } else if (i < 46) {
+                        const hiTransient = hatTick * 0.45 + (sixteenth > 0 ? sixteenth * 0.22 : 0);
+                        const shimmer = Math.sin(curTime * 24 + i * 0.7) * 0.16;
+                        binEnergy = hiTransient + shimmer + 0.20;
+                    } else {
+                        const sparkle = (Math.sin(curTime * 32 + i * 1.1) * 0.15 + 0.15);
+                        const noise = ((Math.sin(curTime * 100 + i * 13) + 1) * 0.5) * 0.28;
+                        binEnergy = (sparkle + noise) * (hatTick * 0.3 + 0.7);
+                    }
+
+                    const flutter = (Math.sin(curTime * 50 + i * 7.7) * 0.04);
+                    binEnergy = Math.max(0.04, Math.min(1.0, (binEnergy + flutter) * volume));
+                    freqBuffer[i] = Math.floor(binEnergy * 255);
+                }
+
+                for (let i = 0; i < 128; i++) {
+                    const angle = (i / 128) * Math.PI * 4;
+                    const waveSample = Math.sin(angle * 2 + curTime * 18) * 0.45 * (kickPunch * 0.4 + 0.6)
+                        + Math.sin(angle * 5 + curTime * 35) * 0.25 * hatTick
+                        + Math.sin(angle * 1 + curTime * 8) * 0.3;
+                    timeBuffer[i] = Math.floor(Math.max(0, Math.min(255, (128 + waveSample * 110 * volume))));
+                }
+                hasRealAudio = true;
+            } else if (!hasRealAudio) {
+                // Gentle ambient harmonic breathing wave when paused
+                idlePhase += 0.035;
+                for (let i = 0; i < 64; i++) {
+                    const ambient = (Math.sin(idlePhase + i * 0.18) * 0.08 + Math.cos(idlePhase * 0.7 + i * 0.09) * 0.05 + 0.12);
+                    freqBuffer[i] = Math.floor(ambient * 255);
+                }
+                for (let i = 0; i < 128; i++) {
+                    const wSample = Math.sin(idlePhase * 1.2 + (i / 128) * Math.PI * 2) * 0.15;
+                    timeBuffer[i] = Math.floor(128 + wSample * 128);
+                }
+            }
+
+            idlePhase += 0.035;
 
             if (visualizerMode === "bars") {
-                drawBars(w, h, freqBuffer, hasAudio);
+                drawBars(w, h, freqBuffer, hasRealAudio);
             } else if (visualizerMode === "wave") {
-                drawWave(w, h, timeBuffer, hasAudio);
+                drawWave(w, h, timeBuffer, hasRealAudio);
             } else if (visualizerMode === "radial") {
-                drawRadial(w, h, freqBuffer, hasAudio);
+                drawRadial(w, h, freqBuffer, hasRealAudio);
             }
         }
 
@@ -1693,82 +3360,93 @@ function initMusicModule(options = {}) {
     }
 
     // MODE 1: Frequency Bars
-    function drawBars(w, h, freqBuffer, hasAudio) {
-        const barCount = 42;
-        const totalGap = (barCount - 1) * 3;
-        const barWidth = Math.max(3, (w - totalGap) / barCount);
+    function drawBars(w, h, freqBuffer, isLive) {
+        const count = 48;
+        const gap = 3;
+        const totalGap = (count - 1) * gap;
+        const barWidth = Math.max(3, (w - totalGap) / count);
         const themeColor = currentPalette.primary;
         const rgb = currentPalette.rgb;
+        const maxBarH = h - 20;
 
-        for (let i = 0; i < barCount; i++) {
-            let val = 0;
-            if (hasAudio) {
-                const binIdx = Math.floor((i / barCount) * 28);
-                val = freqBuffer[binIdx] / 255;
+        for (let i = 0; i < count; i++) {
+            const binIdx = Math.min(63, Math.floor(Math.pow(i / count, 1.25) * 58));
+            const rawVal = freqBuffer[binIdx] / 255;
+
+            if (rawVal > currentBarValues[i]) {
+                currentBarValues[i] = rawVal;
             } else {
-                // Ambient idle gentle wave
-                val = (Math.sin(idlePhase + i * 0.22) * 0.15 + 0.2) * (isCurrentlyPlaying ? 0.4 : 0.2);
+                currentBarValues[i] = Math.max(0, currentBarValues[i] - 0.035);
             }
 
-            // Smooth minimum height
-            const barH = Math.max(4, val * (h - 20));
-            const x = i * (barWidth + 3);
+            const val = currentBarValues[i];
+            const barH = Math.max(4, val * maxBarH);
+            const x = i * (barWidth + gap);
             const y = h - barH - 4;
 
-            // Peak hold calculation
-            if (val > peakHoldBars[i]) {
+            if (val >= peakHoldBars[i]) {
                 peakHoldBars[i] = val;
+                peakHoldTimers[i] = 12;
             } else {
-                peakHoldBars[i] = Math.max(0, peakHoldBars[i] - 0.015);
+                if (peakHoldTimers[i] > 0) {
+                    peakHoldTimers[i]--;
+                } else {
+                    peakHoldBars[i] = Math.max(0, peakHoldBars[i] - 0.018);
+                }
             }
 
-            // Dynamic Gradient per bar
             const grad = ctx.createLinearGradient(0, h, 0, y);
             grad.addColorStop(0, `rgba(${rgb}, 0.15)`);
             grad.addColorStop(0.5, themeColor);
+            grad.addColorStop(0.9, "#ffffff");
             grad.addColorStop(1, "#ffffff");
 
             ctx.fillStyle = grad;
             ctx.beginPath();
             if (ctx.roundRect) {
-                ctx.roundRect(x, y, barWidth, barH, [4, 4, 0, 0]);
+                ctx.roundRect(x, y, barWidth, barH, [3, 3, 0, 0]);
             } else {
                 ctx.rect(x, y, barWidth, barH);
             }
             ctx.fill();
 
-            // Peak indicator dot
-            if (peakHoldBars[i] > 0.08) {
-                const peakY = Math.max(2, h - (peakHoldBars[i] * (h - 20)) - 8);
-                ctx.fillStyle = `rgba(${rgb}, 0.9)`;
-                ctx.fillRect(x, peakY, barWidth, 2);
+            if (peakHoldBars[i] > 0.06) {
+                const peakY = Math.max(2, h - (peakHoldBars[i] * maxBarH) - 7);
+                ctx.fillStyle = `rgba(${rgb}, 0.95)`;
+                ctx.fillRect(x, peakY, barWidth, 2.5);
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(x + 1, peakY, Math.max(1, barWidth - 2), 1.5);
             }
         }
     }
 
     // MODE 2: Oscilloscope Wave
-    function drawWave(w, h, timeBuffer, hasAudio) {
+    function drawWave(w, h, timeBuffer, isLive) {
         const themeColor = currentPalette.primary;
         const rgb = currentPalette.rgb;
         const centerY = h / 2;
 
         ctx.save();
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(w, centerY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.lineWidth = 2.5;
         ctx.strokeStyle = themeColor;
         ctx.shadowColor = themeColor;
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 14;
 
         ctx.beginPath();
         const sliceWidth = w / (timeBuffer.length - 1);
 
         for (let i = 0; i < timeBuffer.length; i++) {
-            let v = 0.5;
-            if (hasAudio) {
-                v = timeBuffer[i] / 255.0;
-            } else {
-                v = 0.5 + Math.sin(idlePhase * 1.5 + (i * 0.12)) * 0.1;
-            }
-            const y = v * (h - 16) + 8;
+            const v = timeBuffer[i] / 255.0;
+            const y = v * (h - 24) + 12;
             const x = i * sliceWidth;
 
             if (i === 0) ctx.moveTo(x, y);
@@ -1776,19 +3454,13 @@ function initMusicModule(options = {}) {
         }
         ctx.stroke();
 
-        // Secondary subtle mirror glow wave
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = `rgba(${rgb}, 0.35)`;
-        ctx.shadowBlur = 4;
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = `rgba(${rgb}, 0.4)`;
+        ctx.shadowBlur = 6;
         ctx.beginPath();
         for (let i = 0; i < timeBuffer.length; i++) {
-            let v = 0.5;
-            if (hasAudio) {
-                v = 1.0 - (timeBuffer[i] / 255.0);
-            } else {
-                v = 0.5 - Math.sin(idlePhase * 1.5 + (i * 0.12)) * 0.08;
-            }
-            const y = v * (h - 16) + 8;
+            const v = 1.0 - (timeBuffer[i] / 255.0);
+            const y = v * (h - 24) + 12;
             const x = i * sliceWidth;
             if (i === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
@@ -1799,45 +3471,45 @@ function initMusicModule(options = {}) {
     }
 
     // MODE 3: Radial Pulse
-    function drawRadial(w, h, freqBuffer, hasAudio) {
+    function drawRadial(w, h, freqBuffer, isLive) {
         const cx = w / 2;
         const cy = h / 2;
         const baseRadius = Math.min(w, h) * 0.22;
-        const spokeCount = 36;
+        const spokeCount = 40;
         const themeColor = currentPalette.primary;
         const rgb = currentPalette.rgb;
 
         ctx.save();
 
-        // Center pulsating core
-        let coreBoost = 0;
-        if (hasAudio) {
-            coreBoost = (freqBuffer[0] + freqBuffer[1] + freqBuffer[2]) / (3 * 255);
-        } else {
-            coreBoost = (Math.sin(idlePhase * 2) + 1) * 0.08;
-        }
+        const bassEnergy = (freqBuffer[0] + freqBuffer[1] + freqBuffer[2] + freqBuffer[3]) / (4 * 255);
+        const coreRadius = baseRadius + bassEnergy * 16;
+
+        const radialGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreRadius);
+        radialGrad.addColorStop(0, `rgba(${rgb}, ${0.45 + bassEnergy * 0.3})`);
+        radialGrad.addColorStop(0.7, `rgba(${rgb}, ${0.15 + bassEnergy * 0.2})`);
+        radialGrad.addColorStop(1, "rgba(0,0,0,0)");
 
         ctx.beginPath();
-        ctx.arc(cx, cy, baseRadius + coreBoost * 14, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${rgb}, ${0.12 + coreBoost * 0.25})`;
+        ctx.arc(cx, cy, coreRadius, 0, Math.PI * 2);
+        ctx.fillStyle = radialGrad;
         ctx.shadowColor = themeColor;
-        ctx.shadowBlur = 18;
+        ctx.shadowBlur = 20;
         ctx.fill();
 
-        // Radiating frequency spokes
-        for (let i = 0; i < spokeCount; i++) {
-            const angle = (i / spokeCount) * Math.PI * 2 + (idlePhase * 0.1);
-            let val = 0;
-            if (hasAudio) {
-                const binIdx = Math.floor((i / spokeCount) * 24);
-                val = (freqBuffer[binIdx] / 255);
-            } else {
-                val = (Math.sin(idlePhase + i * 0.3) * 0.2 + 0.3) * 0.4;
-            }
+        ctx.beginPath();
+        ctx.arc(cx, cy, baseRadius * 0.45, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 255, 255, 0.4)`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
 
-            const spokeLength = 6 + val * (Math.min(w, h) * 0.32);
-            const rStart = baseRadius + coreBoost * 10;
-            const rEnd = rStart + spokeLength;
+        for (let i = 0; i < spokeCount; i++) {
+            const angle = (i / spokeCount) * Math.PI * 2 - (Math.PI / 2);
+            const binIdx = Math.min(63, Math.floor((i / spokeCount) * 48));
+            const val = freqBuffer[binIdx] / 255;
+            const spokeLen = 6 + val * (Math.min(w, h) * 0.34);
+
+            const rStart = baseRadius + bassEnergy * 6;
+            const rEnd = rStart + spokeLen;
 
             const x1 = cx + Math.cos(angle) * rStart;
             const y1 = cy + Math.sin(angle) * rStart;
@@ -1845,7 +3517,11 @@ function initMusicModule(options = {}) {
             const y2 = cy + Math.sin(angle) * rEnd;
 
             ctx.lineWidth = 3;
-            ctx.strokeStyle = val > 0.6 ? "#ffffff" : themeColor;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = val > 0.65 ? "#ffffff" : themeColor;
+            ctx.shadowColor = themeColor;
+            ctx.shadowBlur = val > 0.65 ? 12 : 4;
+
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
@@ -1860,6 +3536,10 @@ function initMusicModule(options = {}) {
     // =========================================================================
     function render(track, playlist, isPlaying, likedSongs, onPlayTrack, onTogglePlay, onSeek, toast) {
         if (!track) return;
+        currentTrackMeta = track;
+        isCurrentlyPlaying = !!isPlaying;
+        setTimeout(resizeCanvas, 40);
+        setTimeout(resizeCanvas, 200);
         const meta = trackDetailsMeta[track.id] || trackDetailsMeta[1];
 
         // 1. Dynamic Album Theming
@@ -2027,6 +3707,7 @@ function initMusicModule(options = {}) {
 
     // Called every tick to sync lyric highlight
     function syncLyricsWithTime(currentTime, duration, lyricsLength) {
+        audioCurrentTime = currentTime;
         if (!lyricsLength) return;
         const step = duration / lyricsLength;
         const currentIdx = Math.min(lyricsLength - 1, Math.floor(currentTime / step));
@@ -2047,6 +3728,8 @@ function initMusicModule(options = {}) {
         updatePlayState,
         updateLikeState,
         syncLyricsWithTime,
+        setCurrentTrack(t) { currentTrackMeta = t; },
+        setAudioTime(t) { audioCurrentTime = t; },
         setAnalyser(node) {
             activeAnalyser = node;
         },
@@ -3170,6 +4853,7 @@ function runApp() {
     }
 
     function updateSliderBg(el, pct) {
+        if (!el) return;
         el.style.background = `linear-gradient(to right,#1ed760 0%,#1ed760 ${pct}%,#4d4d4d ${pct}%,#4d4d4d 100%)`;
     }
 
@@ -3261,7 +4945,8 @@ function runApp() {
                     if (window.location.pathname.startsWith("/html/")) {
                         window.location.href = "/html/" + target;
                     } else {
-                        window.location.href = "/" + page;
+                        const routeTarget = page === "home" ? "/" : (page === "createPlaylist" ? "/library" : "/" + page);
+                        window.location.href = routeTarget;
                     }
                 } else {
                     if (window.location.pathname.includes("/html/")) {
@@ -3275,28 +4960,36 @@ function runApp() {
     }
 
     function updateNavButtons() {
-        navBackBtn.disabled = historyIndex <= 0;
-        navBackBtn.style.opacity = historyIndex <= 0 ? "0.4" : "1";
-        navForwardBtn.disabled = historyIndex >= pageHistory.length - 1;
-        navForwardBtn.style.opacity = historyIndex >= pageHistory.length - 1 ? "0.4" : "1";
+        if (navBackBtn) {
+            navBackBtn.disabled = historyIndex <= 0;
+            navBackBtn.style.opacity = historyIndex <= 0 ? "0.4" : "1";
+        }
+        if (navForwardBtn) {
+            navForwardBtn.disabled = historyIndex >= pageHistory.length - 1;
+            navForwardBtn.style.opacity = historyIndex >= pageHistory.length - 1 ? "0.4" : "1";
+        }
     }
 
-    navBackBtn.addEventListener("click", () => {
-        if (historyIndex > 0) { historyIndex--; navigate(pageHistory[historyIndex], false); }
-    });
-    navForwardBtn.addEventListener("click", () => {
-        if (historyIndex < pageHistory.length - 1) { historyIndex++; navigate(pageHistory[historyIndex], false); }
-    });
+    if (navBackBtn) {
+        navBackBtn.addEventListener("click", () => {
+            if (historyIndex > 0) { historyIndex--; navigate(pageHistory[historyIndex], false); }
+        });
+    }
+    if (navForwardBtn) {
+        navForwardBtn.addEventListener("click", () => {
+            if (historyIndex < pageHistory.length - 1) { historyIndex++; navigate(pageHistory[historyIndex], false); }
+        });
+    }
 
     // =========================================================================
     // TOP NAV ACTIONS & DROPDOWN MENU
     // =========================================================================
-    $("navHome").addEventListener("click", () => navigate("home"));
-    $("navSearch").addEventListener("click", () => {
+    if ($("navHome")) $("navHome").addEventListener("click", () => navigate("home"));
+    if ($("navSearch")) $("navSearch").addEventListener("click", () => {
         navigate("search");
-        setTimeout(() => searchInput.focus(), 50);
+        if (searchInput) setTimeout(() => searchInput.focus(), 50);
     });
-    $("navLibrary").addEventListener("click", () => {
+    if ($("navLibrary")) $("navLibrary").addEventListener("click", () => {
         navigate("library");
         renderLibrary();
     });
@@ -3510,6 +5203,22 @@ function runApp() {
         });
     }
 
+    // Global delegated listener for right sidebar toggle actions
+    document.addEventListener("click", (e) => {
+        if (e.target.closest("#railExpandBtn") || e.target.closest(".rail-expand-btn")) {
+            e.stopPropagation();
+            setRightSidebarState(true);
+        } else if (e.target.closest("#closeRightSidebarBtn") || e.target.closest(".right-sidebar-icon-btn") || e.target.closest("#rightSidebarCollapseBtn")) {
+            e.stopPropagation();
+            setRightSidebarState(false);
+        } else if (e.target.closest("#rightSidebarRail") && !e.target.closest(".right-sidebar-expanded-content")) {
+            const sb = $("rightSidebar");
+            if (sb && sb.classList.contains("collapsed")) {
+                setRightSidebarState(true);
+            }
+        }
+    });
+
     // Drag-to-Slide interactive gesture mechanics
     let isDraggingSlide = false;
 
@@ -3600,31 +5309,46 @@ function runApp() {
     }
 
     function updateRightSidebar(track, nextTrack) {
+        const emptyEl = $("rightSidebarEmpty") || $("rightSidebarEmptyState");
+        const contentEl = $("rightSidebarContent") || $("rightSidebarPlayingContent");
+
         if (!track) {
-            if (rightSidebarEmpty) rightSidebarEmpty.style.display = "flex";
-            if (rightSidebarContent) rightSidebarContent.style.display = "none";
+            if (emptyEl) emptyEl.style.display = "flex";
+            if (contentEl) contentEl.style.display = "none";
             return;
         }
 
         // Show active content if a track is playing
-        if (rightSidebarEmpty) rightSidebarEmpty.style.display = "none";
-        if (rightSidebarContent) rightSidebarContent.style.display = "flex";
+        if (emptyEl) emptyEl.style.display = "none";
+        if (contentEl) contentEl.style.display = "flex";
 
-        if (rightSidebarCover) rightSidebarCover.src = track.img || "../assesst/card1img.jpeg";
-        if (rightSidebarTrackTitle) rightSidebarTrackTitle.textContent = track.title || "Unknown Track";
-        if (rightSidebarTrackArtist) rightSidebarTrackArtist.textContent = track.artist || "Unknown Artist";
-        if (rightSidebarArtistImg) rightSidebarArtistImg.src = track.img || "../assesst/card1img.jpeg";
-        if (rightSidebarArtistName) rightSidebarArtistName.textContent = track.artist || "Artist";
+        const defaultCover = "/assesst/card1img.jpeg";
+        const defaultNext = "/assesst/card2img.jpeg";
+        const coverEl = $("rightSidebarCover") || $("rightSidebarArt");
+        const titleEl = $("rightSidebarTrackTitle") || $("rightSidebarTrackName");
+        const artistEl = $("rightSidebarTrackArtist");
+        const artistImgEl = $("rightSidebarArtistImg");
+        const artistNameEl = $("rightSidebarArtistName");
+        const likeBtnEl = $("rightSidebarLikeBtn");
 
-        if (rightSidebarLikeBtn) {
+        if (coverEl) coverEl.src = track.img || defaultCover;
+        if (titleEl) titleEl.textContent = track.title || "Unknown Track";
+        if (artistEl) artistEl.textContent = track.artist || "Unknown Artist";
+        if (artistImgEl) artistImgEl.src = track.img || defaultCover;
+        if (artistNameEl) artistNameEl.textContent = track.artist || "Artist";
+
+        if (likeBtnEl) {
             const isLiked = likedSongs.has(track.id);
-            rightSidebarLikeBtn.className = isLiked ? "fa-solid fa-heart now-playing-like-btn liked" : "fa-regular fa-heart now-playing-like-btn";
+            likeBtnEl.className = isLiked ? "fa-solid fa-heart now-playing-like-btn liked" : "fa-regular fa-heart now-playing-like-btn";
         }
 
         if (nextTrack) {
-            if (rightSidebarNextImg) rightSidebarNextImg.src = nextTrack.img || "../assesst/card2img.jpeg";
-            if (rightSidebarNextName) rightSidebarNextName.textContent = nextTrack.title || "";
-            if (rightSidebarNextArtist) rightSidebarNextArtist.textContent = nextTrack.artist || "";
+            const nextImgEl = $("rightSidebarNextImg");
+            const nextNameEl = $("rightSidebarNextName");
+            const nextArtistEl = $("rightSidebarNextArtist");
+            if (nextImgEl) nextImgEl.src = nextTrack.img || defaultNext;
+            if (nextNameEl) nextNameEl.textContent = nextTrack.title || "";
+            if (nextArtistEl) nextArtistEl.textContent = nextTrack.artist || "";
         }
     }
 
@@ -3634,15 +5358,21 @@ function runApp() {
     const navSignUpBtn = $("navSignUpBtn");
     const navLoginBtn = $("navLoginBtn");
     if (navSignUpBtn) {
-        navSignUpBtn.addEventListener("click", () => {
-            if (authModule) authModule.switchTab("register");
-            navigate("auth");
+        navSignUpBtn.addEventListener("click", (e) => {
+            if ($("pageAuth")) {
+                e.preventDefault();
+                if (authModule) authModule.switchTab("register");
+                navigate("auth");
+            }
         });
     }
     if (navLoginBtn) {
-        navLoginBtn.addEventListener("click", () => {
-            if (authModule) authModule.switchTab("login");
-            navigate("auth");
+        navLoginBtn.addEventListener("click", (e) => {
+            if ($("pageAuth")) {
+                e.preventDefault();
+                if (authModule) authModule.switchTab("login");
+                navigate("auth");
+            }
         });
     }
 
@@ -3656,10 +5386,13 @@ function runApp() {
             profileDropdown.style.display = isOpen ? "none" : "block";
         });
 
-        $("dropdownProfileItem").addEventListener("click", () => {
-            profileDropdown.style.display = "none";
-            navigate("profile");
-        });
+        const dropdownProfile = $("dropdownProfileItem") || $("dropdownProfileBtn");
+        if (dropdownProfile) {
+            dropdownProfile.addEventListener("click", () => {
+                profileDropdown.style.display = "none";
+                navigate("profile");
+            });
+        }
 
         const dropdownAuthItem = $("dropdownAuthItem");
         if (dropdownAuthItem) {
@@ -3670,26 +5403,35 @@ function runApp() {
             });
         }
 
-        $("dropdownPremiumItem").addEventListener("click", () => {
-            profileDropdown.style.display = "none";
-            navigate("premium");
-        });
+        const dropdownPremium = $("dropdownPremiumItem") || $("dropdownUpgradeBtn");
+        if (dropdownPremium) {
+            dropdownPremium.addEventListener("click", () => {
+                profileDropdown.style.display = "none";
+                navigate("premium");
+            });
+        }
 
-        $("dropdownSettingsItem").addEventListener("click", () => {
-            profileDropdown.style.display = "none";
-            navigate("profile");
-            const settingsTab = document.querySelector('.profile-nav-tab[data-target="profileTabSettings"]');
-            if (settingsTab) settingsTab.click();
-        });
+        const dropdownSettings = $("dropdownSettingsItem") || $("dropdownSettingsBtn");
+        if (dropdownSettings) {
+            dropdownSettings.addEventListener("click", () => {
+                profileDropdown.style.display = "none";
+                navigate("profile");
+                const settingsTab = document.querySelector('.profile-nav-tab[data-target="profileTabSettings"]');
+                if (settingsTab) settingsTab.click();
+            });
+        }
 
-        $("dropdownLogoutItem").addEventListener("click", () => {
-            profileDropdown.style.display = "none";
-            if (authModule) {
-                authModule.logout();
-            } else {
-                toast("Logged out of Spotify session", "fa-arrow-right-from-bracket");
-            }
-        });
+        const dropdownLogout = $("dropdownLogoutItem") || $("dropdownLogoutBtn");
+        if (dropdownLogout) {
+            dropdownLogout.addEventListener("click", () => {
+                profileDropdown.style.display = "none";
+                if (authModule) {
+                    authModule.logout();
+                } else {
+                    toast("Logged out of Spotify session", "fa-arrow-right-from-bracket");
+                }
+            });
+        }
 
         document.addEventListener("click", (e) => {
             if (!e.target.closest(".profile-nav-wrapper")) {
@@ -3702,7 +5444,11 @@ function runApp() {
     // MUSIC SCREEN & PLAYER ALBUM CLICK
     // =========================================================================
     musicModule = initMusicModule({
-        getAnalyser: () => analyserNode
+        getAnalyser: () => analyserNode,
+        getAudioTime: () => (audioElement ? audioElement.currentTime : currentTime),
+        getAudioVolume: () => (isMuted ? 0 : volume),
+        getCurrentTrack: () => (playlist && playlist[currentTrackIndex] ? playlist[currentTrackIndex] : null),
+        getIsPlaying: () => isPlaying
     });
 
     // Clicking the bottom player album section opens the Music screen
@@ -3786,7 +5532,7 @@ function runApp() {
             isFollowingArtist = !isFollowingArtist;
             aboutArtistFollowBtn.textContent = isFollowingArtist ? "Following" : "Follow";
             aboutArtistFollowBtn.className = isFollowingArtist ? "badge follow-artist-btn following-btn" : "badge dark-badge";
-            const artistName = $("aboutArtistName").textContent;
+            const artistName = $("aboutArtistName") ? $("aboutArtistName").textContent : "Artist";
             toast(isFollowingArtist ? `Now following ${artistName}` : `Unfollowed ${artistName}`, isFollowingArtist ? "fa-user-plus" : "fa-user-minus");
         });
     }
@@ -3807,33 +5553,75 @@ function runApp() {
         </div>`;
     }
 
+    let homeFeedData = null;
+
     function renderHome() {
         const recent = $("recentlyPlayedCards");
         const trending = $("trendingCards");
         const featured = $("featuredCards");
-        if (recent) recent.innerHTML = playlist.slice(0, 3).map(createCardHTML).join("");
-        if (trending) trending.innerHTML = playlist.slice(2, 7).map(createCardHTML).join("");
-        if (featured) featured.innerHTML = playlist.slice(7, 12).concat(playlist.slice(0, 2)).map(createCardHTML).join("");
+        const bollywood = $("bollywoodCards");
+        const bollywoodRomance = $("bollywoodRomanceCards");
+        const punjabi = $("punjabiCards");
+        const electronic = $("electronicCards");
+        const chill = $("chillCards");
+        const hipHop = $("hipHopCards");
+
+        const getBolly = () => playlist.filter(t => t.category === 'Bollywood' || (t.genre && t.genre.toLowerCase().includes('bollywood')));
+        const getRomance = () => playlist.filter(t => t.searchTag && ['Arijit', 'Atif', 'Darshan', 'Tum Hi Ho', 'Kesariya', 'Shreya'].some(s => t.searchTag.includes(s)));
+        const getPunjabi = () => playlist.filter(t => t.category === 'Punjabi' || (t.searchTag && ['Diljit', 'AP Dhillon', 'Sidhu', 'Badshah', 'Punjabi'].some(s => t.searchTag.includes(s))));
+
+        if (homeFeedData) {
+            if (recent) recent.innerHTML = (homeFeedData.trending || playlist).slice(0, 5).map(createCardHTML).join("");
+            if (trending) trending.innerHTML = (homeFeedData.trending || playlist).slice(5, 12).map(createCardHTML).join("");
+            if (featured) featured.innerHTML = (homeFeedData.pop || playlist).slice(0, 6).map(createCardHTML).join("");
+            if (bollywood) bollywood.innerHTML = (homeFeedData.bollywood && homeFeedData.bollywood.length > 0 ? homeFeedData.bollywood : getBolly()).slice(0, 8).map(createCardHTML).join("");
+            if (bollywoodRomance) bollywoodRomance.innerHTML = (homeFeedData.romance && homeFeedData.romance.length > 0 ? homeFeedData.romance : getRomance()).slice(0, 8).map(createCardHTML).join("");
+            if (punjabi) punjabi.innerHTML = (homeFeedData.punjabi && homeFeedData.punjabi.length > 0 ? homeFeedData.punjabi : getPunjabi()).slice(0, 8).map(createCardHTML).join("");
+            if (electronic) electronic.innerHTML = (homeFeedData.electronic || playlist.filter(t => t.category === 'Electronic')).slice(0, 6).map(createCardHTML).join("");
+            if (chill) chill.innerHTML = (homeFeedData.chill || playlist.filter(t => t.category === 'Ambient')).slice(0, 6).map(createCardHTML).join("");
+            if (hipHop) hipHop.innerHTML = (homeFeedData.hiphop || playlist.filter(t => t.category === 'Hip-Hop')).slice(0, 6).map(createCardHTML).join("");
+        } else {
+            if (recent) recent.innerHTML = playlist.slice(0, 5).map(createCardHTML).join("");
+            if (trending) trending.innerHTML = playlist.slice(5, 12).map(createCardHTML).join("");
+            if (featured) featured.innerHTML = playlist.slice(12, 18).map(createCardHTML).join("");
+            if (bollywood) bollywood.innerHTML = getBolly().slice(0, 8).map(createCardHTML).join("");
+            if (bollywoodRomance) bollywoodRomance.innerHTML = getRomance().slice(0, 8).map(createCardHTML).join("");
+            if (punjabi) punjabi.innerHTML = getPunjabi().slice(0, 8).map(createCardHTML).join("");
+            if (electronic) electronic.innerHTML = playlist.filter(t => t.category === 'Electronic' || (t.genre && t.genre.includes('Electronic'))).slice(0, 6).map(createCardHTML).join("");
+            if (chill) chill.innerHTML = playlist.filter(t => t.category === 'Ambient' || (t.genre && t.genre.includes('Lo-Fi'))).slice(0, 6).map(createCardHTML).join("");
+            if (hipHop) hipHop.innerHTML = playlist.filter(t => t.category === 'Hip-Hop' || (t.genre && t.genre.includes('Trap'))).slice(0, 6).map(createCardHTML).join("");
+        }
         bindCardClicks();
     }
 
     // Clicking ANY song card loads the track, plays it, AND opens the Music page
     function bindCardClicks() {
         $$(".card:not(.playlist-card):not(.podcast-show-card)").forEach(card => {
-            card.addEventListener("click", () => {
-                const id = card.dataset.songId;
-                const idx = playlist.findIndex(t => String(t.id) === String(id));
-                if (idx !== -1) {
-                    if (idx === currentTrackIndex && isPlaying) {
-                        navigate("music");
-                    } else {
-                        loadTrack(idx, true);
-                        navigate("music");
-                    }
-                }
-            });
+            card.style.cursor = "pointer";
         });
     }
+
+    // Global delegated click handler for song cards (works on both static SSR & dynamic DOM)
+    document.addEventListener("click", (e) => {
+        const card = e.target.closest(".card:not(.playlist-card):not(.podcast-show-card)");
+        if (!card) return;
+        const songId = card.dataset.songId;
+        let idx = -1;
+        if (songId) {
+            idx = playlist.findIndex(t => String(t.id) === String(songId));
+        }
+        if (idx === -1) {
+            const titleEl = card.querySelector(".card-title");
+            if (titleEl) {
+                const titleText = titleEl.textContent.trim().toLowerCase();
+                idx = playlist.findIndex(t => t.title && t.title.trim().toLowerCase() === titleText);
+            }
+        }
+        if (idx !== -1) {
+            loadTrack(idx, true);
+            navigate("music");
+        }
+    });
 
     // =========================================================================
     // SEARCH PAGE (SPOTIFY EXACT BROWSE ALL UI/UX)
@@ -3885,24 +5673,26 @@ function runApp() {
     async function doSearch(query) {
         const q = (query || "").trim();
         if (!q) {
-            $("searchDefault").style.display = "block";
-            $("searchResults").style.display = "none";
-            $("noResults").style.display = "none";
-            clearSearchBtn.style.display = "none";
+            if ($("searchDefault")) $("searchDefault").style.display = "block";
+            if ($("searchResults")) $("searchResults").style.display = "none";
+            if ($("noResults")) $("noResults").style.display = "none";
+            if (clearSearchBtn) clearSearchBtn.style.display = "none";
             return;
         }
-        clearSearchBtn.style.display = "block";
+        if (clearSearchBtn) clearSearchBtn.style.display = "block";
 
         // Show loading indicator
-        $("searchDefault").style.display = "none";
-        $("searchResults").style.display = "block";
-        $("noResults").style.display = "none";
-        $("searchResultCards").innerHTML = `
-            <div style="grid-column: 1 / -1; display:flex; align-items:center; justify-content:center; padding: 3rem; color: #1ed760; font-size: 1.1rem; gap: 0.8rem;">
-                <i class="fa-solid fa-circle-notch fa-spin"></i>
-                <span>Searching Audius music catalog for "${q}"...</span>
-            </div>
-        `;
+        if ($("searchDefault")) $("searchDefault").style.display = "none";
+        if ($("searchResults")) $("searchResults").style.display = "block";
+        if ($("noResults")) $("noResults").style.display = "none";
+        if ($("searchResultCards")) {
+            $("searchResultCards").innerHTML = `
+                <div style="grid-column: 1 / -1; display:flex; align-items:center; justify-content:center; padding: 3rem; color: #1ed760; font-size: 1.1rem; gap: 0.8rem;">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    <span>Searching Audius music catalog for "${q}"...</span>
+                </div>
+            `;
+        }
 
         let matches = [];
         try {
@@ -3928,35 +5718,53 @@ function runApp() {
                     playlist.push(t);
                 }
             });
-            $("searchResults").style.display = "block";
-            $("noResults").style.display = "none";
-            $("searchResultCards").innerHTML = matches.map(createCardHTML).join("");
+            if ($("searchResults")) $("searchResults").style.display = "block";
+            if ($("noResults")) $("noResults").style.display = "none";
+            if ($("searchResultCards")) $("searchResultCards").innerHTML = matches.map(createCardHTML).join("");
             bindCardClicks();
         } else {
             // Fallback to local playlist filter if offline
             const lower = q.toLowerCase();
             const localMatches = playlist.filter(t =>
-                t.title.toLowerCase().includes(lower) ||
-                t.artist.toLowerCase().includes(lower) ||
-                (t.genre && t.genre.toLowerCase().includes(lower))
+                (t.title && t.title.toLowerCase().includes(lower)) ||
+                (t.artist && t.artist.toLowerCase().includes(lower)) ||
+                (t.genre && t.genre.toLowerCase().includes(lower)) ||
+                (t.category && t.category.toLowerCase().includes(lower)) ||
+                (t.searchTag && t.searchTag.toLowerCase().includes(lower))
             );
             if (localMatches.length > 0) {
-                $("searchResults").style.display = "block";
-                $("noResults").style.display = "none";
-                $("searchResultCards").innerHTML = localMatches.map(createCardHTML).join("");
+                if ($("searchResults")) $("searchResults").style.display = "block";
+                if ($("noResults")) $("noResults").style.display = "none";
+                if ($("searchResultCards")) $("searchResultCards").innerHTML = localMatches.map(createCardHTML).join("");
                 bindCardClicks();
             } else {
-                $("searchResults").style.display = "none";
-                $("noResults").style.display = "block";
+                if ($("searchResults")) $("searchResults").style.display = "none";
+                if ($("noResults")) $("noResults").style.display = "block";
             }
         }
     }
 
-    searchInput.addEventListener("input", () => doSearch(searchInput.value));
-    clearSearchBtn.addEventListener("click", () => {
-        searchInput.value = "";
+    // Global delegated listener for Browse All genre cards and back button
+    document.addEventListener("click", (e) => {
+        const gc = e.target.closest(".genre-card");
+        if (gc && gc.dataset && gc.dataset.genre) {
+            const genre = gc.dataset.genre;
+            if (searchInput) searchInput.value = genre;
+            doSearch(genre);
+        }
+        if (e.target.closest("#backToBrowseBtn")) {
+            if (searchInput) searchInput.value = "";
+            doSearch("");
+        }
+    });
+
+    if (searchInput) searchInput.addEventListener("input", () => doSearch(searchInput.value));
+    if (clearSearchBtn) clearSearchBtn.addEventListener("click", () => {
+        if (searchInput) {
+            searchInput.value = "";
+            searchInput.focus();
+        }
         doSearch("");
-        searchInput.focus();
     });
 
     // =========================================================================
@@ -3973,28 +5781,29 @@ function runApp() {
         const likedList = $("likedSongsList");
 
         // Liked songs count
-        $("likedSongsCount").textContent = `${likedSongs.size} song${likedSongs.size !== 1 ? "s" : ""}`;
+        if ($("likedSongsCount")) $("likedSongsCount").textContent = `${likedSongs.size} song${likedSongs.size !== 1 ? "s" : ""}`;
 
         if (filter === "liked") {
-            likedBanner.style.display = "none";
-            libPlaylists.style.display = "none";
-            likedList.style.display = "flex";
+            if (likedBanner) likedBanner.style.display = "none";
+            if (libPlaylists) libPlaylists.style.display = "none";
+            if (likedList) likedList.style.display = "flex";
             renderLikedSongsList();
         } else if (filter === "playlists") {
-            likedBanner.style.display = "none";
-            libPlaylists.style.display = "grid";
-            likedList.style.display = "none";
+            if (likedBanner) likedBanner.style.display = "none";
+            if (libPlaylists) libPlaylists.style.display = "grid";
+            if (likedList) likedList.style.display = "none";
             renderLibraryPlaylists();
         } else {
-            likedBanner.style.display = "flex";
-            libPlaylists.style.display = "grid";
-            likedList.style.display = "none";
+            if (likedBanner) likedBanner.style.display = "flex";
+            if (libPlaylists) libPlaylists.style.display = "grid";
+            if (likedList) likedList.style.display = "none";
             renderLibraryPlaylists();
         }
     }
 
     function renderLikedSongsList() {
         const list = $("likedSongsList");
+        if (!list) return;
         if (likedSongs.size === 0) {
             list.innerHTML = `<p style="color:#a7a7a7;text-align:center;padding:2rem;">No liked songs yet. Click the ♡ icon on any song to add it here.</p>`;
             return;
@@ -4057,34 +5866,44 @@ function runApp() {
     });
 
     // Liked songs banner click
-    $("likedSongsBanner").addEventListener("click", () => renderLibrary("liked"));
+    if ($("likedSongsBanner")) {
+        $("likedSongsBanner").addEventListener("click", () => renderLibrary("liked"));
+    }
 
     // =========================================================================
     // CREATE PLAYLIST PAGE
     // =========================================================================
-    $("createPlaylistBtn").addEventListener("click", () => {
-        $("playlistNameInput").value = "";
-        $("playlistDescInput").value = "";
-        $("newPlaylistTitle").textContent = `My Playlist #${playlistIdCounter}`;
-        $("playlistSongSearch").value = "";
-        $("playlistSongResults").innerHTML = "";
-        renderPlaylistSongSearch("");
-        navigate("createPlaylist");
-    });
+    if ($("createPlaylistBtn")) {
+        $("createPlaylistBtn").addEventListener("click", () => {
+            if ($("playlistNameInput")) $("playlistNameInput").value = "";
+            if ($("playlistDescInput")) $("playlistDescInput").value = "";
+            if ($("newPlaylistTitle")) $("newPlaylistTitle").textContent = `My Playlist #${playlistIdCounter}`;
+            if ($("playlistSongSearch")) $("playlistSongSearch").value = "";
+            if ($("playlistSongResults")) $("playlistSongResults").innerHTML = "";
+            renderPlaylistSongSearch("");
+            navigate("createPlaylist");
+        });
+    }
 
-    $("addPlaylistIcon").addEventListener("click", () => {
-        $("createPlaylistBtn").click();
-    });
+    if ($("addPlaylistIcon")) {
+        $("addPlaylistIcon").addEventListener("click", () => {
+            if ($("createPlaylistBtn")) $("createPlaylistBtn").click();
+        });
+    }
 
     // Live preview title
-    $("playlistNameInput").addEventListener("input", (e) => {
-        $("newPlaylistTitle").textContent = e.target.value || `My Playlist #${playlistIdCounter}`;
-    });
+    if ($("playlistNameInput")) {
+        $("playlistNameInput").addEventListener("input", (e) => {
+            if ($("newPlaylistTitle")) $("newPlaylistTitle").textContent = e.target.value || `My Playlist #${playlistIdCounter}`;
+        });
+    }
 
     // Song search for adding to playlist
-    $("playlistSongSearch").addEventListener("input", (e) => {
-        renderPlaylistSongSearch(e.target.value);
-    });
+    if ($("playlistSongSearch")) {
+        $("playlistSongSearch").addEventListener("input", (e) => {
+            renderPlaylistSongSearch(e.target.value);
+        });
+    }
 
     function renderPlaylistSongSearch(query) {
         const q = query.trim().toLowerCase();
@@ -4092,16 +5911,18 @@ function runApp() {
             t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)
         ) : playlist;
 
-        $("playlistSongResults").innerHTML = results.map(t =>
-            `<div class="liked-song-row add-song-row" data-song-id="${t.id}">
-                <img src="${t.img}" alt="${t.title}">
-                <div class="song-info">
-                    <span class="song-name">${t.title}</span>
-                    <span class="song-artist">${t.artist}</span>
-                </div>
-                <button class="badge add-song-btn" data-song-id="${t.id}" style="height:28px;font-size:0.75rem;">Add</button>
-            </div>`
-        ).join("");
+        if ($("playlistSongResults")) {
+            $("playlistSongResults").innerHTML = results.map(t =>
+                `<div class="liked-song-row add-song-row" data-song-id="${t.id}">
+                    <img src="${t.img}" alt="${t.title}">
+                    <div class="song-info">
+                        <span class="song-name">${t.title}</span>
+                        <span class="song-artist">${t.artist}</span>
+                    </div>
+                    <button class="badge add-song-btn" data-song-id="${t.id}" style="height:28px;font-size:0.75rem;">Add</button>
+                </div>`
+            ).join("");
+        }
     }
 
     // Temporary songs list for the playlist being created
@@ -4121,23 +5942,24 @@ function runApp() {
     });
 
     // Save playlist
-    $("savePlaylistBtn").addEventListener("click", () => {
-        const name = $("playlistNameInput").value.trim() || `My Playlist #${playlistIdCounter}`;
-        const desc = $("playlistDescInput").value.trim();
-        const playlistUuid = (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
-            ? crypto.randomUUID()
-            : `pl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const pl = {
-            id: playlistUuid,
-            name,
-            desc,
-            songs: [...pendingPlaylistSongs]
-        };
-        userPlaylists.push(pl);
-        try { localStorage.setItem("spotify_userPlaylists", JSON.stringify(userPlaylists)); } catch (e) {}
-        if (typeof spotifyApi !== "undefined") {
-            spotifyApi.createPlaylist(name, desc).catch(() => {});
-        }
+    if ($("savePlaylistBtn")) {
+        $("savePlaylistBtn").addEventListener("click", () => {
+            const name = ($("playlistNameInput") ? $("playlistNameInput").value.trim() : "") || `My Playlist #${playlistIdCounter}`;
+            const desc = $("playlistDescInput") ? $("playlistDescInput").value.trim() : "";
+            const playlistUuid = (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
+                ? crypto.randomUUID()
+                : `pl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const pl = {
+                id: playlistUuid,
+                name,
+                desc,
+                songs: [...pendingPlaylistSongs]
+            };
+            userPlaylists.push(pl);
+            try { localStorage.setItem("spotify_userPlaylists", JSON.stringify(userPlaylists)); } catch (e) {}
+            if (typeof spotifyApi !== "undefined") {
+                spotifyApi.createPlaylist(name, desc).catch(() => {});
+            }
         pendingPlaylistSongs = [];
         renderSidebarPlaylists();
         if (profileModule) profileModule.updatePlaylists(userPlaylists);
@@ -4145,6 +5967,7 @@ function runApp() {
         navigate("library");
         renderLibrary();
     });
+    }
 
     // =========================================================================
     // BROWSE PODCASTS PAGE
@@ -4171,28 +5994,32 @@ function runApp() {
     ];
 
     function renderPodcasts() {
-        $("podcastCategories").innerHTML = podcastCategories.map(c =>
-            `<div class="podcast-category-card">
-                <i class="fa-solid ${c.icon}"></i>
-                <span>${c.name}</span>
-            </div>`
-        ).join("");
+        if ($("podcastCategories")) {
+            $("podcastCategories").innerHTML = podcastCategories.map(c =>
+                `<div class="podcast-category-card">
+                    <i class="fa-solid ${c.icon}"></i>
+                    <span>${c.name}</span>
+                </div>`
+            ).join("");
+        }
 
-        $("podcastCards").innerHTML = podcastShows.map(p =>
-            `<div class="card podcast-show-card">
-                <div class="card-img-wrapper">
-                    <img src="${p.img}" class="card-img" alt="${p.title}">
-                    <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
-                </div>
-                <p class="card-title">${p.title}</p>
-                <p class="card-info">${p.host}</p>
-            </div>`
-        ).join("");
+        if ($("podcastCards")) {
+            $("podcastCards").innerHTML = podcastShows.map(p =>
+                `<div class="card podcast-show-card">
+                    <div class="card-img-wrapper">
+                        <img src="${p.img}" class="card-img" alt="${p.title}">
+                        <button class="card-play-btn" title="Play"><i class="fa-solid fa-play"></i></button>
+                    </div>
+                    <p class="card-title">${p.title}</p>
+                    <p class="card-info">${p.host}</p>
+                </div>`
+            ).join("");
+        }
 
         // Fetch dynamic podcast shows from REST API /api/podcasts
         if (typeof spotifyApi !== "undefined") {
             spotifyApi.getPodcasts().then(res => {
-                if (res && res.data && Array.isArray(res.data.podcasts) && res.data.podcasts.length > 0) {
+                if (res && res.data && Array.isArray(res.data.podcasts) && res.data.podcasts.length > 0 && $("podcastCards")) {
                     $("podcastCards").innerHTML = res.data.podcasts.map(p =>
                         `<div class="card podcast-show-card" data-podcast-id="${p.id}">
                             <div class="card-img-wrapper">
@@ -4218,10 +6045,12 @@ function runApp() {
         });
     }
 
-    $("browsePodcastsBtn").addEventListener("click", () => {
-        renderPodcasts();
-        navigate("podcasts");
-    });
+    if ($("browsePodcastsBtn")) {
+        $("browsePodcastsBtn").addEventListener("click", () => {
+            renderPodcasts();
+            navigate("podcasts");
+        });
+    }
 
     // =========================================================================
     // PLAYLIST DETAIL PAGE
@@ -4235,29 +6064,33 @@ function runApp() {
             ? playlist.find(t => String(t.id) === String(pl.songs[0]))?.img || "./assesst/card1img.jpeg"
             : "./assesst/card1img.jpeg";
 
-        $("playlistDetailHeader").innerHTML = `
-            <img src="${coverImg}" alt="${pl.name}" onerror="this.onerror=null;this.src='./assesst/card1img.jpeg';">
-            <div class="detail-info">
-                <p style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:#a7a7a7;margin:0 0 0.3rem">Playlist</p>
-                <h1>${pl.name}</h1>
-                ${pl.desc ? `<p style="margin:0.3rem 0 0.5rem">${pl.desc}</p>` : ""}
-                <p style="margin:0;">${pl.songs.length} song${pl.songs.length !== 1 ? "s" : ""} • ${fmt(pl.songs.reduce((sum, id) => sum + (playlist.find(t => String(t.id) === String(id))?.duration || 0), 0))}</p>
-            </div>`;
+        if ($("playlistDetailHeader")) {
+            $("playlistDetailHeader").innerHTML = `
+                <img src="${coverImg}" alt="${pl.name}" onerror="this.onerror=null;this.src='./assesst/card1img.jpeg';">
+                <div class="detail-info">
+                    <p style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:#a7a7a7;margin:0 0 0.3rem">Playlist</p>
+                    <h1>${pl.name}</h1>
+                    ${pl.desc ? `<p style="margin:0.3rem 0 0.5rem">${pl.desc}</p>` : ""}
+                    <p style="margin:0;">${pl.songs.length} song${pl.songs.length !== 1 ? "s" : ""} • ${fmt(pl.songs.reduce((sum, id) => sum + (playlist.find(t => String(t.id) === String(id))?.duration || 0), 0))}</p>
+                </div>`;
+        }
 
-        $("playlistTrackList").innerHTML = pl.songs.map((songId, i) => {
-            const t = playlist.find(s => String(s.id) === String(songId));
-            if (!t) return "";
-            return `<div class="track-row" data-song-id="${t.id}">
-                <span class="track-number">${i + 1}</span>
-                <i class="fa-solid fa-play track-play-icon"></i>
-                <img src="${t.img}" alt="${t.title}" onerror="this.onerror=null;this.src='./assesst/card1img.jpeg';">
-                <div class="track-info">
-                    <span class="track-name">${t.title}</span>
-                    <span class="track-artist">${t.artist}</span>
-                </div>
-                <span class="track-duration">${fmt(t.duration)}</span>
-            </div>`;
-        }).join("");
+        if ($("playlistTrackList")) {
+            $("playlistTrackList").innerHTML = pl.songs.map((songId, i) => {
+                const t = playlist.find(s => String(s.id) === String(songId));
+                if (!t) return "";
+                return `<div class="track-row" data-song-id="${t.id}">
+                    <span class="track-number">${i + 1}</span>
+                    <i class="fa-solid fa-play track-play-icon"></i>
+                    <img src="${t.img}" alt="${t.title}" onerror="this.onerror=null;this.src='./assesst/card1img.jpeg';">
+                    <div class="track-info">
+                        <span class="track-name">${t.title}</span>
+                        <span class="track-artist">${t.artist}</span>
+                    </div>
+                    <span class="track-duration">${fmt(t.duration)}</span>
+                </div>`;
+            }).join("");
+        }
 
         $$(".track-row").forEach(r => {
             r.addEventListener("click", () => {
@@ -4270,29 +6103,33 @@ function runApp() {
         });
 
         // Play All
-        $("playAllBtn").onclick = () => {
-            if (pl.songs.length > 0) {
-                const idx = playlist.findIndex(t => String(t.id) === String(pl.songs[0]));
-                if (idx !== -1) {
-                    loadTrack(idx, true);
-                    navigate("music");
+        if ($("playAllBtn")) {
+            $("playAllBtn").onclick = () => {
+                if (pl.songs.length > 0) {
+                    const idx = playlist.findIndex(t => String(t.id) === String(pl.songs[0]));
+                    if (idx !== -1) {
+                        loadTrack(idx, true);
+                        navigate("music");
+                    }
                 }
-            }
-        };
+            };
+        }
 
         // Shuffle Playlist
-        $("shufflePlaylistBtn").onclick = () => {
-            if (pl.songs.length > 0) {
-                const randomId = pl.songs[Math.floor(Math.random() * pl.songs.length)];
-                const idx = playlist.findIndex(t => String(t.id) === String(randomId));
-                if (idx !== -1) {
-                    isShuffle = true;
-                    shuffleBtn.classList.add("active");
-                    loadTrack(idx, true);
-                    navigate("music");
+        if ($("shufflePlaylistBtn")) {
+            $("shufflePlaylistBtn").onclick = () => {
+                if (pl.songs.length > 0) {
+                    const randomId = pl.songs[Math.floor(Math.random() * pl.songs.length)];
+                    const idx = playlist.findIndex(t => String(t.id) === String(randomId));
+                    if (idx !== -1) {
+                        isShuffle = true;
+                        if (shuffleBtn) shuffleBtn.classList.add("active");
+                        loadTrack(idx, true);
+                        navigate("music");
+                    }
                 }
-            }
-        };
+            };
+        }
 
         navigate("playlistDetail");
     }
@@ -4497,7 +6334,7 @@ function runApp() {
         const t = playlist[currentTrackIndex];
         if (!t) return;
         const isLiked = likedSongs.has(t.id);
-        likeBtn.className = isLiked ? "fa-solid fa-heart like-icon liked" : "fa-regular fa-heart like-icon";
+        if (likeBtn) likeBtn.className = isLiked ? "fa-solid fa-heart like-icon liked" : "fa-regular fa-heart like-icon";
         if ($("rightSidebarLikeBtn")) {
             $("rightSidebarLikeBtn").className = isLiked ? "fa-solid fa-heart now-playing-like-btn liked" : "fa-regular fa-heart now-playing-like-btn";
         }
@@ -4513,72 +6350,84 @@ function runApp() {
     }
 
     // Player button listeners
-    playPauseBtn.addEventListener("click", togglePlay);
-    nextBtn.addEventListener("click", nextTrack);
-    prevBtn.addEventListener("click", prevTrack);
+    if (playPauseBtn) playPauseBtn.addEventListener("click", togglePlay);
+    if (nextBtn) nextBtn.addEventListener("click", nextTrack);
+    if (prevBtn) prevBtn.addEventListener("click", prevTrack);
 
-    shuffleBtn.addEventListener("click", () => {
-        isShuffle = !isShuffle;
-        shuffleBtn.classList.toggle("active", isShuffle);
-        toast(isShuffle ? "Shuffle ON" : "Shuffle OFF", "fa-shuffle");
-    });
+    if (shuffleBtn) {
+        shuffleBtn.addEventListener("click", () => {
+            isShuffle = !isShuffle;
+            shuffleBtn.classList.toggle("active", isShuffle);
+            toast(isShuffle ? "Shuffle ON" : "Shuffle OFF", "fa-shuffle");
+        });
+    }
 
-    repeatBtn.addEventListener("click", () => {
-        if (repeatMode === "off") { repeatMode = "all"; repeatBtn.classList.add("active"); toast("Repeat all", "fa-repeat"); }
-        else if (repeatMode === "all") { repeatMode = "one"; toast("Repeat one", "fa-repeat"); }
-        else { repeatMode = "off"; repeatBtn.classList.remove("active"); toast("Repeat off", "fa-repeat"); }
-    });
+    if (repeatBtn) {
+        repeatBtn.addEventListener("click", () => {
+            if (repeatMode === "off") { repeatMode = "all"; repeatBtn.classList.add("active"); toast("Repeat all", "fa-repeat"); }
+            else if (repeatMode === "all") { repeatMode = "one"; toast("Repeat one", "fa-repeat"); }
+            else { repeatMode = "off"; repeatBtn.classList.remove("active"); toast("Repeat off", "fa-repeat"); }
+        });
+    }
 
-    likeBtn.addEventListener("click", () => {
-        const t = playlist[currentTrackIndex];
-        if (!t) return;
-        if (likedSongs.has(t.id)) {
-            likedSongs.delete(t.id);
-            toast("Removed from Liked Songs", "fa-heart-crack");
-        } else {
-            likedSongs.add(t.id);
-            toast("Added to Liked Songs", "fa-heart");
-        }
-        try { localStorage.setItem("spotify_likedSongs", JSON.stringify([...likedSongs])); } catch (e) {}
-        updateLikeIcon();
-        if (typeof spotifyApi !== "undefined") {
-            spotifyApi.toggleLike(t.id).catch(() => {});
-        }
-    });
+    if (likeBtn) {
+        likeBtn.addEventListener("click", () => {
+            const t = playlist[currentTrackIndex];
+            if (!t) return;
+            if (likedSongs.has(t.id)) {
+                likedSongs.delete(t.id);
+                toast("Removed from Liked Songs", "fa-heart-crack");
+            } else {
+                likedSongs.add(t.id);
+                toast("Added to Liked Songs", "fa-heart");
+            }
+            try { localStorage.setItem("spotify_likedSongs", JSON.stringify([...likedSongs])); } catch (e) {}
+            updateLikeIcon();
+            if (typeof spotifyApi !== "undefined") {
+                spotifyApi.toggleLike(t.id).catch(() => {});
+            }
+        });
+    }
 
     // Progress bar
-    progressBar.addEventListener("input", () => {
-        const t = playlist[currentTrackIndex];
-        if (!t) return;
-        const pct = parseFloat(progressBar.value);
-        const dur = (audioElement && audioElement.duration && isFinite(audioElement.duration))
-            ? audioElement.duration
-            : t.duration;
-        currentTime = (pct / 100) * dur;
-        if (audioElement && isFinite(currentTime)) {
-            audioElement.currentTime = currentTime;
-        }
-        currTimeEl.textContent = fmt(currentTime);
-        updateSliderBg(progressBar, pct);
-    });
+    if (progressBar) {
+        progressBar.addEventListener("input", () => {
+            const t = playlist[currentTrackIndex];
+            if (!t) return;
+            const pct = parseFloat(progressBar.value);
+            const dur = (audioElement && audioElement.duration && isFinite(audioElement.duration))
+                ? audioElement.duration
+                : t.duration;
+            currentTime = (pct / 100) * dur;
+            if (audioElement && isFinite(currentTime)) {
+                audioElement.currentTime = currentTime;
+            }
+            if (currTimeEl) currTimeEl.textContent = fmt(currentTime);
+            updateSliderBg(progressBar, pct);
+        });
+    }
 
     // Volume
-    volumeBar.addEventListener("input", () => {
-        volume = parseFloat(volumeBar.value) / 100;
-        isMuted = volume === 0;
-        try { localStorage.setItem("spotify_volume", volume); } catch (e) {}
-        if (audioElement) audioElement.volume = isMuted ? 0 : volume;
-        if (audioCtx && masterGain) masterGain.gain.setValueAtTime(volume * 0.3, audioCtx.currentTime);
-        updateVolumeUI();
-    });
+    if (volumeBar) {
+        volumeBar.addEventListener("input", () => {
+            volume = parseFloat(volumeBar.value) / 100;
+            isMuted = volume === 0;
+            try { localStorage.setItem("spotify_volume", volume); } catch (e) {}
+            if (audioElement) audioElement.volume = isMuted ? 0 : volume;
+            if (audioCtx && masterGain) masterGain.gain.setValueAtTime(volume * 0.3, audioCtx.currentTime);
+            updateVolumeUI();
+        });
+    }
 
-    volumeIcon.addEventListener("click", () => {
-        if (isMuted) { isMuted = false; volume = prevVolume || 0.75; }
-        else { prevVolume = volume; isMuted = true; volume = 0; }
-        if (audioElement) audioElement.volume = isMuted ? 0 : volume;
-        if (audioCtx && masterGain) masterGain.gain.setValueAtTime(isMuted ? 0 : volume * 0.3, audioCtx.currentTime);
-        updateVolumeUI();
-    });
+    if (volumeIcon) {
+        volumeIcon.addEventListener("click", () => {
+            if (isMuted) { isMuted = false; volume = prevVolume || 0.75; }
+            else { prevVolume = volume; isMuted = true; volume = 0; }
+            if (audioElement) audioElement.volume = isMuted ? 0 : volume;
+            if (audioCtx && masterGain) masterGain.gain.setValueAtTime(isMuted ? 0 : volume * 0.3, audioCtx.currentTime);
+            updateVolumeUI();
+        });
+    }
 
     function updateVolumeUI() {
         const v = isMuted ? 0 : Math.round(volume * 100);
@@ -4628,10 +6477,21 @@ function runApp() {
     updateSliderBg(volumeBar, 75);
     loadTrack(0, false);
 
-    // Fetch and load real Audius trending songs into Home page
-    musicApi.getTrending(12).then(trendingTracks => {
-        if (Array.isArray(trendingTracks) && trendingTracks.length > 0) {
-            trendingTracks.forEach(tt => {
+    // Fetch and load rich multi-genre Audius songs feed into Home page
+    musicApi.getFeed().then(feed => {
+        if (feed) {
+            homeFeedData = feed;
+            const allFeedTracks = [
+                ...(feed.trending || []),
+                ...(feed.pop || []),
+                ...(feed.electronic || []),
+                ...(feed.hiphop || []),
+                ...(feed.chill || []),
+                ...(feed.bollywood || []),
+                ...(feed.romance || []),
+                ...(feed.punjabi || [])
+            ];
+            allFeedTracks.forEach(tt => {
                 const exIdx = playlist.findIndex(p => String(p.id) === String(tt.id));
                 if (exIdx !== -1) {
                     Object.assign(playlist[exIdx], tt);
@@ -4640,12 +6500,12 @@ function runApp() {
                 }
             });
             renderHome();
-            if (currentTrackIndex === 0 && !isPlaying) {
+            if (currentTrackIndex === 0 && !isPlaying && playlist.length > 0) {
                 loadTrack(0, false);
             }
         }
     }).catch(err => {
-        console.warn("Audius trending fetch failed:", err);
+        console.warn("Audius feed fetch notice:", err);
     });
 
     // Initialize Profile Module
@@ -4717,27 +6577,48 @@ function runApp() {
         "premium.html": "premium",
         "profile.html": "profile",
         "music.html": "music",
-        "auth.html": "auth"
+        "auth.html": "auth",
+        "search": "search",
+        "library": "library",
+        "podcasts": "podcasts",
+        "premium": "premium",
+        "profile": "profile",
+        "music": "music",
+        "auth": "auth",
+        "login": "auth",
+        "signup": "auth",
+        "register": "auth"
     };
-    const currentFileName = (window.location.pathname.split("/").pop() || "index.html").toLowerCase();
-    const dataPage = (document.body.dataset.page || "").toLowerCase();
+    const currentPathClean = window.location.pathname.replace(/^\/|\/$/g, "").toLowerCase();
+    const currentFileName = (currentPathClean.split("/").pop() || "index.html").toLowerCase();
+    const dataPage = (document.body && document.body.dataset && document.body.dataset.page ? document.body.dataset.page : "").toLowerCase();
 
     // Highlight active link if on a standalone footer or sidebar page
-    if (currentFileName && currentFileName !== "index.html") {
+    if (currentFileName && currentFileName !== "index.html" && currentFileName !== "") {
         $$(".footer-link, .sidebar-legal-link").forEach(l => {
             const lHref = (l.getAttribute("href") || "").split("/").pop().toLowerCase();
             l.classList.toggle("active-footer-link", lHref === currentFileName);
         });
     }
 
-    const initialPage = dataPage || pageUrlMap[currentFileName] || "home";
+    const initialPage = dataPage || pageUrlMap[currentFileName] || pageUrlMap[currentPathClean] || "home";
     const targetElement = $(`page${initialPage.charAt(0).toUpperCase() + initialPage.slice(1)}`);
-    if (pageUrlMap[currentFileName] || targetElement) {
+    if (targetElement) {
         navigate(initialPage, false);
     } else {
         // Standalone footer page (about, jobs, etc.)
         currentPage = initialPage;
         $$(".nav-option").forEach(n => n.classList.remove("active-nav"));
+        if (initialPage === "home" && $("navHome")) $("navHome").classList.add("active-nav");
+        else if (initialPage === "search" && $("navSearch")) $("navSearch").classList.add("active-nav");
+        else if (initialPage === "library" && $("navLibrary")) $("navLibrary").classList.add("active-nav");
+    }
+
+    // Auto-switch auth tab if ?tab=register or ?tab=login is in the query params
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get("tab");
+    if (tabParam && authModule) {
+        authModule.switchTab(tabParam);
     }
 }
 
